@@ -5,7 +5,7 @@ const moment = require("moment");
 const { MapInfo, ModUtil } = require("@rian8337/osu-base");
 const { MapStars, OsuPerformanceCalculator } = require("@rian8337/osu-difficulty-calculator");
 
-let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets)^\/|([0-9]+)|\#osu^\/|([0-9]+)/g, osuMods = /^\+|(EZ)|(NF)|(HT)|(SD)|(HD)|(HR)|(DT)|(FL)|(RX)|(SO)/i;
+let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]+)/g, osuMods = /^\+|(EZ)|(NF)|(HT)|(SD)|(HD)|(HR)|(DT)|(FL)|(RX)|(SO)/i;
 
 (() => {
     let twitch = new tmi.Client({ identity: { username: process.env["TWITCH_USERNAME"], password: process.env["TWITCH_PASSWORD"] }, channels: [process.env["TWITCH_CHANNEL"]] }),
@@ -17,9 +17,11 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets)^\/|([0-9]+)|\#osu^\/|([0-9
 
         twitch.on("message", (channel, tags, message, self) => {
             message = message.split(" ");
-            if(message[0].match(osuLink)) {
-                let beatmap = message[0].match(osuLink)[0], diff = message[0].match(osuLink)[1], beatmapCalc = undefined, beatmapInfo, rating, mods;
+            if(message[0].match(osuLink)[0] == "https://osu.ppy.sh/beatmapsets/") {
+                let beatmap = message[0].match(osuLink)[1], diff = message[0].match(osuLink)[2], beatmapCalc = undefined, beatmapInfo, rating, mods;
                 bancho.osuApi.beatmaps.getBySetId(beatmap).then(async (x) => {
+                    if(x.length <= 0) return;
+                    
                     for(setId in x) {
                         if(x[setId].id == diff) {
                             beatmapCalc = x[setId];
