@@ -17,11 +17,11 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
 
         twitch.on("message", (channel, tags, message, self) => {
             message = message.split(" ");
-            if(message[0].match(osuLink)[0] == "https://osu.ppy.sh/beatmapsets/") {
+            if(message[0].match(osuLink) && message[0].match(osuLink)[0] == "https://osu.ppy.sh/beatmapsets/") {
                 let beatmap = message[0].match(osuLink)[1], diff = message[0].match(osuLink)[2], beatmapCalc = undefined, beatmapInfo, rating, mods;
                 bancho.osuApi.beatmaps.getBySetId(beatmap).then(async (x) => {
                     if(x.length <= 0) return;
-                    
+
                     for(setId in x) {
                         if(x[setId].id == diff) {
                             beatmapCalc = x[setId];
