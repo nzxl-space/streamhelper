@@ -82,6 +82,7 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
             if(message[0] == "!np" || message[0] == "!nppp" || message[0] == "!pp") {
                 let currentlyPlaying;
                 discord.guilds.cache.get(process.env["DISCORD_GUILD"]).members.fetch(process.env["DISCORD_USER"]).then(user => {
+                    if(!user.presence) return;
                     user.presence.activities.forEach(x => {
                         if(x.name == "osu!" && x.type == "PLAYING") {
                             currentlyPlaying = x.details;
