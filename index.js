@@ -1,4 +1,6 @@
 const config = require("./config.json");
+process.env["OSU_API_KEY"] = config.credentials.osu.apiKey;
+
 const tmi = require("tmi.js");
 const Banchojs = require("bancho.js");
 const moment = require("moment");
