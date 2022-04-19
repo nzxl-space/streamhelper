@@ -91,6 +91,7 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
             if(!name) return;
 
             if(message[0] == "!np" || message[0] == "!nppp" || message[0] == "!pp") {
+                console.log(`${channel} requested currentlyPlaying`);
                 let currentlyPlaying;
                 discord.guilds.cache.get(config.credentials.discord.guild).members.fetch(name.discord).then(user => {
                     if(!user.presence) return;
@@ -137,6 +138,7 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
             }
 
             if(message[0].match(osuLink) && message[0].match(osuLink)[0] == "https://osu.ppy.sh/beatmapsets/") {
+                console.log(`${channel} requested Beatmap`);
                 let beatmap = message[0].match(osuLink)[1], diff = message[0].match(osuLink)[2], beatmapCalc = undefined, beatmapInfo, rating, mods;
                 bancho.osuApi.beatmaps.getBySetId(beatmap).then(async (x) => {
                     if(x.length <= 0) return;
