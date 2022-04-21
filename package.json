@@ -15,6 +15,7 @@
     "bancho.js": "^0.9.7",
     "discord.js": "^13.6.0",
     "moment": "^2.29.3",
+    "node-cache": "^5.1.2",
     "tmi.js": "^1.8.5"
   }
 }
