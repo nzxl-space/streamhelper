@@ -154,7 +154,8 @@ function getCurrent(user, mods = null) {
         discord.guilds.cache.get(config.credentials.discord.guild).members.fetch(user.discord).then(u => {
             if(!u.presence) return resolve("No data available");
             
-            let currentlyPlaying = u.presence.activities.filter(x => x.name == "osu!" && x.type == "PLAYING")[0].details;
+            let currentlyPlaying = null;
+            if(u.presence.activities.filter(x => x.name == "osu!" && x.type == "PLAYING").length >= 1) currentlyPlaying = u.presence.activities.filter(x => x.name == "osu!" && x.type == "PLAYING")[0].details;
             if(!currentlyPlaying && beatmapCache.get(`${user.discord}`)) currentlyPlaying = beatmapCache.get(`${user.discord}`).map;
 
             if(currentlyPlaying) {
