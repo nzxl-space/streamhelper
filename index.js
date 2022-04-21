@@ -74,94 +74,79 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
     twitch.connect().then(async () => {
         console.log("Twitch connected");
         await bancho.connect().then(() => console.log("Bancho connected"));
-        await discord.login(config.credentials.discord.token);
-
-        discord.on("ready", () => console.log("Discord connected"));
+        await discord.login(config.credentials.discord.token).then(() => console.log("Discord connected"));
 
         twitch.on("message", (channel, tags, message, self) => {
+            if(!Object.keys(config.users).includes(`${channel.replace(/\#/, "")}`)) return;
+
             message = message.split(" ");
-            let name;
-
-            Object.keys(config.users).forEach(v => {
-                if(v == channel.replace(/\#/, "")) {
-                    name = config.users[v]
-                }
-            });
-
-            if(!name) return;
+            user = config.users[`${channel.replace(/\#/, "")}`];
 
             if(message[0] == "!np" || message[0] == "!nppp" || message[0] == "!pp") {
                 console.log(`${channel} requested currentlyPlaying`);
-                let currentlyPlaying;
-                discord.guilds.cache.get(config.credentials.discord.guild).members.fetch(name.discord).then(user => {
-                    if(!user.presence) return;
-                    user.presence.activities.forEach(x => {
-                        if(x.name == "osu!" && x.type == "PLAYING") {
-                            currentlyPlaying = x.details;
-                        }
-                    });
+                discord.guilds.cache.get(config.credentials.discord.guild).members.fetch(user.discord).then(u => {
+                    if(!u.presence) return;
 
+                    let currentlyPlaying = u.presence.activities.filter(x => x.name == "osu!" && x.type == "PLAYING")[0].details;
                     if(currentlyPlaying) {
                         axios({ 
                             method: "GET", 
-                            url: `https://osu.ppy.sh/api/v2/beatmapsets/search?m=0&q=${currentlyPlaying}&s=any&cursor=1`,
+                            url: `https://osu.ppy.sh/api/v2/beatmapsets/search?m=0&q=${currentlyPlaying}&s=any`,
                             headers: {
                                 "Authorization": `Bearer ${accessToken}`,
                                 "Content-Type": "application/json",
                                 "Accept": "application/json"
                             }
                         })
-                        .then(response => {
-                            let success = false;
-                            response.data.beatmapsets.forEach(async x => {
-                                if(success) return;
-                                if(x.artist.match(/\w+.\w+/)[0] == currentlyPlaying.match(/\w+.\w+/)[0] && x.beatmaps.find(o => o.version == currentlyPlaying.match(/(?<=\[).+?(?=\])/)[0])) {
-                                    success = true;
-                                    let found = x.beatmaps.find(o => o.version == currentlyPlaying.match(/(?<=\[).+?(?=\])/)[0]), beatmapInfo, rating;
-
-                                    beatmapInfo = await MapInfo.getInformation({ beatmapID: found.id });
-                                    rating = await new MapStars().calculate({ map: beatmapInfo.map });
-
-                                    twitch.say(channel, `/me » ${currentlyPlaying} - ${found.url} | 95%: ${Math.round(await new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 95 }).total)}pp | 98%: ${Math.round(await new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 98 }).total)}pp | 99%: ${Math.round(await new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 99 }).total)}pp | 100%: ${Math.round(await new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 100 }).total)}pp | ${moment.utc(found.total_length*1000).format("mm:ss")} - ★ ${Math.round(found.difficulty_rating)} - ♫ ${(found.count_circles+found.count_sliders+found.count_spinners)} - AR${found.ar} - OD${found.accuracy}`);
+                        .then(async response => {
+                            for (x in response.data.beatmapsets) {
+                                map = response.data.beatmapsets[x];
+                                if(map.artist.match(/\w+.\w+/)[0] == currentlyPlaying.match(/\w+.\w+/)[0]) {
+                                    found = map.beatmaps.find(o => o.version == currentlyPlaying.match(/(?!.*\[)(?<=\[).+?(?=\])/)[0]);
+                                    if(found) {
+                                        twitch.say(channel, `/me » ${currentlyPlaying} - ${found.url} | 95%: ${await calculate(found.id, 95)}pp | 98%: ${await calculate(found.id, 98)}pp | 99%: ${await calculate(found.id, 99)}pp | 100%: ${await calculate(found.id, 100)}pp | ${moment.utc(found.total_length*1000).format("mm:ss")} - ★ ${Math.round(found.difficulty_rating)} - ♫ ${(found.count_circles+found.count_sliders+found.count_spinners)} - AR${found.ar} - OD${found.accuracy}`);
+                                        break;
+                                    }
                                 }
-                            });
-
-                            if(!success) {
-                                twitch.say(channel, `/me No data available`);
                             }
                         });
-                    } else {
-                        twitch.say(channel, `/me Not playing anything at the moment`);
                     }
                 });
+
                 return;
             }
 
             if(message[0].match(osuLink) && message[0].match(osuLink)[0] == "https://osu.ppy.sh/beatmapsets/") {
                 console.log(`${channel} requested Beatmap`);
-                let beatmap = message[0].match(osuLink)[1], diff = message[0].match(osuLink)[2], beatmapCalc = undefined, beatmapInfo, rating, mods;
-                bancho.osuApi.beatmaps.getBySetId(beatmap).then(async (x) => {
+                bancho.osuApi.beatmaps.getBySetId(message[0].match(osuLink)[1]).then(async (x) => {
                     if(x.length <= 0) return;
 
                     for(setId in x) {
-                        if(x[setId].id == diff) {
+                        if(x[setId].id == message[0].match(osuLink)[2]) {
                             beatmapCalc = x[setId];
                         }
                     }
 
                     if(!beatmapCalc) beatmapCalc = x[0];
 
-                    if(message[1] && message[1].match(osuMods))
-                        mods = await ModUtil.pcStringToMods(message[1].replace(/^\+/, "").toUpperCase());
-
-                    beatmapInfo = await MapInfo.getInformation({ beatmapID: beatmapCalc.id });
-                    rating = await new MapStars().calculate({ map: beatmapInfo.map, mods: mods });
-
-                    bancho.getUser(name.osu).sendMessage(`[${tags["mod"] == true ? "MOD" : tags["subscriber"] == true ? "SUB" : tags["badges"] && tags.badges["vip"] ? "VIP" : "VIEWER"}] ${tags["username"]} » [${message[0]} ${beatmapCalc.artist} - ${beatmapCalc.title} [${beatmapCalc.version}]]${message[1] && message[1].match(osuMods) ? " +"+message[1].replace(/^\+/, "").toUpperCase() : ""} | 95%: ${Math.round(await new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 95 }).total)}pp | 98%: ${Math.round(await new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 98 }).total)}pp | 99%: ${Math.round(await new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 99 }).total)}pp | 100%: ${Math.round(await new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 100 }).total)}pp | ${moment.utc(beatmapCalc.totalLength*1000).format("mm:ss")} - ★ ${Math.round(beatmapCalc.difficultyRating)} - ♫ ${(beatmapCalc.countNormal+beatmapCalc.countSlider+beatmapCalc.countSpinner)} - AR${beatmapCalc.diffApproach} - OD${beatmapCalc.diffOverall}`);
-                    twitch.say(channel, "/me Request sent!");
+                    bancho.getUser(user.osu).sendMessage(`[${tags["mod"] || tags["subscriber"] || tags["badges"] && tags.badges["vip"] ? "★" : "❥"}] ${tags["username"]} » [${message[0]} ${beatmapCalc.artist} - ${beatmapCalc.title} [${beatmapCalc.version}]]${message[1] && message[1].match(osuMods) ? " +"+message[1].replace(/^\+/, "").toUpperCase() : ""} | 95%: ${await calculate(beatmapCalc.id, 95, message[1])}pp | 98%: ${await calculate(beatmapCalc.id, 98, message[1])}pp | 99%: ${await calculate(beatmapCalc.id, 99, message[1])}pp | 100%: ${await calculate(beatmapCalc.id, 100, message[1])}pp | ${moment.utc(beatmapCalc.totalLength*1000).format("mm:ss")} - ★ ${Math.round(beatmapCalc.difficultyRating)} - ♫ ${(beatmapCalc.countNormal+beatmapCalc.countSlider+beatmapCalc.countSpinner)} - AR${beatmapCalc.diffApproach} - OD${beatmapCalc.diffOverall}`).then(() => {
+                        twitch.say(channel, "/me Request sent!");
+                    });
                 });
             }
         });
     });
     
 })();
+
+function calculate(id, acc, mods = null) {
+    return new Promise(async resolve => {
+        if(mods && mods.match(osuLink)) mods = ModUtil.pcStringToMods(mods.replace(/^\+/, "").toUpperCase());
+
+        beatmapInfo = await MapInfo.getInformation({ beatmapID: id });
+        rating = new MapStars().calculate({ map: beatmapInfo.map, mods: mods });
+        performance = new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: acc }).total;
+
+        resolve(Math.round(performance));
+    });
+}
