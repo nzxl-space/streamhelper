@@ -77,34 +77,69 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
         await bancho.connect().then(() => console.log("Bancho connected"));
         await discord.login(config.credentials.discord.token).then(() => console.log("Discord connected"));
 
+        setInterval(() => {
+            Object.keys(config.users).forEach(user => {
+                discord.guilds.cache.get(config.credentials.discord.guild).members.fetch(config.users[`${user}`].discord).then(u => {
+                    if(!u.presence) return;
+
+                    if(u.presence.activities.filter(x => x.name == "osu!" && x.type == "PLAYING" && x.details).length >= 1) {
+                        currentMap = u.presence.activities.filter(x => x.name == "osu!" && x.type == "PLAYING")[0].details;
+                    
+                        if(beatmapCache.get(`${config.users[`${user}`].discord}`) && beatmapCache.get(`${config.users[`${user}`].discord}`).map == currentMap)
+                            return;
+    
+                        beatmapCache.set(`${config.users[`${user}`].discord}`, { map: currentMap, timestamp: Math.floor(Date.now() / 1000) });
+                        console.log(`${config.users[`${user}`].osu} is playing ${currentMap}`);
+                    }
+                });
+            });
+        }, 3*1000);
+
         twitch.on("message", (channel, tags, message, self) => {
             if(!Object.keys(config.users).includes(`${channel.replace(/\#/, "")}`)) return;
 
             message = message.split(" ");
             user = config.users[`${channel.replace(/\#/, "")}`];
 
-            switch (message[0]) {
-                case "!pp":
-                case "!nppp":
-                case "!np":
-                    console.log(`${channel} requesting currently playing map`);
-                    getCurrent(user).then(msg => {
-                        console.log(channel, `${msg}`);
-                        twitch.say(channel, `/me ${msg}`);
+            if(message[0] == "!np") {
+                console.log(`Request for currently playing map in ${channel}`);
+                if(beatmapCache.get(`${user.discord}`)) {
+                    axios({
+                        method: "GET", 
+                        url: `https://osu.ppy.sh/api/v2/beatmapsets/search?m=0&q=${beatmapCache.get(`${user.discord}`).map}&s=any`,
+                        headers: {
+                            "Authorization": `Bearer ${accessToken}`,
+                            "Content-Type": "application/json",
+                            "Accept": "application/json"
+                        }
+                    })
+                    .then(async response => {
+                        let wFound = false;
+                        for (x in response.data.beatmapsets) {
+                            map = response.data.beatmapsets[x];
+                            currentlyPlaying = beatmapCache.get(`${user.discord}`).map;
+                            mods = (message[1] && message[1].match(osuMods) ? message[1].replace(/^\+/, "").toUpperCase() : null);
+                            if(map.artist.match(/\w+.\w+/)[0] == currentlyPlaying.match(/\w+.\w+/)[0]) {
+                                found = map.beatmaps.find(o => o.version == currentlyPlaying.match(/(?!.*\[)(?<=\[).+?(?=\])/)[0]);
+                                if(found) {
+                                    wFound = true;
+                                    calc = await calculate(found.id, mods);
+                                    twitch.say(channel, `${moment.utc(beatmapCache.get(`${user.discord}`).timestamp*1000).format("HH:mm")} » ${currentlyPlaying}${mods ? " +"+mods : ""} - ${found.url} | 95%: ${calc.b}pp | 98%: ${calc.a}pp | 99%: ${calc.s}pp | 100%: ${calc.ss}pp | ${moment.utc(found.total_length*1000).format("mm:ss")} - ★ ${calc.stars} - ♫ ${(found.count_circles+found.count_sliders+found.count_spinners)} - AR${calc.ar} - OD${calc.od}`);
+                                    break;
+                                }
+                            }
+                        }
+
+                        if(!wFound)
+                            twitch.say(channel, "/me No data available");
                     });
-                    break;
-                case "!mods":
-                case "!w":
-                case "!with":
-                    console.log(`${channel} requesting currently playing map with mods`);
-                    getCurrent(user, (message[1] && message[1].match(osuMods) ? message[1].replace(/^\+/, "").toUpperCase() : null)).then(msg => {
-                        console.log(channel, `${msg}`);
-                        twitch.say(channel, `/me ${msg}`)
-                    });
-                    break;
+                }
+
+                return;
             }
 
             if(message[0].match(osuLink) && message[0].match(osuLink)[0] == "https://osu.ppy.sh/beatmapsets/") {
+                console.log(`New map request in ${channel}`);
                 bancho.osuApi.beatmaps.getBySetId(message[0].match(osuLink)[1]).then(async (x) => {
                     if(x.length <= 0) return;
 
@@ -146,43 +181,5 @@ function calculate(id, mods = null) {
         });
 
         console.timeEnd(`Calculating ${id}`);
-    });
-}
-
-function getCurrent(user, mods = null) {
-    return new Promise(resolve => {
-        discord.guilds.cache.get(config.credentials.discord.guild).members.fetch(user.discord).then(u => {
-            if(!u.presence) return resolve("No data available");
-            
-            let currentlyPlaying = null;
-            if(u.presence.activities.filter(x => x.name == "osu!" && x.type == "PLAYING").length >= 1) currentlyPlaying = u.presence.activities.filter(x => x.name == "osu!" && x.type == "PLAYING")[0].details;
-            if(!currentlyPlaying && beatmapCache.get(`${user.discord}`)) currentlyPlaying = beatmapCache.get(`${user.discord}`).map;
-
-            if(currentlyPlaying) {
-                axios({ 
-                    method: "GET", 
-                    url: `https://osu.ppy.sh/api/v2/beatmapsets/search?m=0&q=${currentlyPlaying}&s=any`,
-                    headers: {
-                        "Authorization": `Bearer ${accessToken}`,
-                        "Content-Type": "application/json",
-                        "Accept": "application/json"
-                    }
-                })
-                .then(async response => {
-                    for (x in response.data.beatmapsets) {
-                        map = response.data.beatmapsets[x];
-                        if(map.artist.match(/\w+.\w+/)[0] == currentlyPlaying.match(/\w+.\w+/)[0]) {
-                            found = map.beatmaps.find(o => o.version == currentlyPlaying.match(/(?!.*\[)(?<=\[).+?(?=\])/)[0]);
-                            if(found) {
-                                beatmapCache.set(`${user.discord}`, { map: currentlyPlaying });
-                                calc = await calculate(found.id, mods);
-                                resolve(`» ${currentlyPlaying} - ${found.url} | 95%: ${calc.b}pp | 98%: ${calc.a}pp | 99%: ${calc.s}pp | 100%: ${calc.ss}pp | ${moment.utc(found.total_length*1000).format("mm:ss")} - ★ ${calc.stars} - ♫ ${(found.count_circles+found.count_sliders+found.count_spinners)} - AR${calc.ar} - OD${calc.od}`);
-                                break;
-                            }
-                        }
-                    }
-                });
-            }
-        });
     });
 }
