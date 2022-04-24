@@ -13,6 +13,7 @@ const { MapInfo, ModUtil } = require("@rian8337/osu-base");
 const { MapStars, OsuPerformanceCalculator } = require("@rian8337/osu-difficulty-calculator");
 const NodeCache = require( "node-cache" );
 const beatmapCache = new NodeCache();
+const CronJob = require('cron').CronJob;
 
 let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]+)/g, osuMods = /^\+|(EZ)|(NF)|(HT)|(SD)|(HD)|(HR)|(DT)|(FL)|(RX)|(SO)/i, accessToken, twitch, bancho, discord;
 
@@ -21,61 +22,13 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
     bancho = new Banchojs.BanchoClient({ username: config.credentials.osu.username, password: config.credentials.osu.password, apiKey: config.credentials.osu.apiKey });
     discord = new Client({ intents: [ Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_PRESENCES, Intents.FLAGS.GUILD_MEMBERS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_WEBHOOKS, Intents.FLAGS.DIRECT_MESSAGES ] });
 
-    if(!fs.existsSync("./access")) {
-        console.log(`https://osu.ppy.sh/oauth/authorize?client_id=${config.credentials.osu.devApp.clientID}&redirect_uri=http://localhost:3000&response_type=code&scope=public`);
-        http.createServer((req, res) => {
-            let queryObject = url.parse(req.url, true).query;
-            if(queryObject.code) {
-                res.writeHead(200);
-                res.end("<script>window.close();</script>");
-    
-                axios({
-                    method: "POST", 
-                    url: `https://osu.ppy.sh/oauth/token`,
-                    data: {
-                        "client_id": config.credentials.osu.devApp.clientID,
-                        "client_secret": config.credentials.osu.devApp.clientSecret,
-                        "code": queryObject.code,
-                        "grant_type": "authorization_code",
-                        "redirect_uri": "http://localhost:3000"
-                    },
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Accept": "application/json"
-                    }
-                })
-                .then(response => {
-                    fs.writeFileSync("./access", response.data.refresh_token);
-                    process.exit(0);
-                });
-            }
-        }).listen(3000);
-        return;
-    } else {
-        axios({
-            method: "POST", 
-            url: `https://osu.ppy.sh/oauth/token`,
-            data: {
-                "client_id": config.credentials.osu.devApp.clientID,
-                "client_secret": config.credentials.osu.devApp.clientSecret,
-                "refresh_token": fs.readFileSync("./access", "utf8"),
-                "grant_type": "refresh_token",
-            },
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            }
-        })
-        .then(response => {
-            fs.writeFileSync("./access", response.data.refresh_token);
-            accessToken = response.data.access_token;
-        });
-    }
+    new CronJob('0 2 * * *', () => process.exit(1), null, true, 'UTC').start();
 
     twitch.connect().then(async () => {
         console.log("Twitch connected");
         await bancho.connect().then(() => console.log("Bancho connected"));
         await discord.login(config.credentials.discord.token).then(() => console.log("Discord connected"));
+        accessToken = await generate();
 
         setInterval(() => {
             Object.keys(config.users).forEach(user => {
@@ -161,6 +114,61 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
     });
     
 })();
+
+function generate(accessToken = fs.existsSync("./access")) {
+    return new Promise(resolve => {
+        if(!accessToken) {
+            http.createServer((req, res) => {
+                let queryObject = url.parse(req.url, true).query;
+                if(queryObject.code) {
+                    res.writeHead(200);
+                    res.end("<script>window.close();</script>");
+        
+                    axios({
+                        method: "POST", 
+                        url: `https://osu.ppy.sh/oauth/token`,
+                        data: {
+                            "client_id": config.credentials.osu.devApp.clientID,
+                            "client_secret": config.credentials.osu.devApp.clientSecret,
+                            "code": queryObject.code,
+                            "grant_type": "authorization_code",
+                            "redirect_uri": "http://localhost:3000"
+                        },
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Accept": "application/json"
+                        }
+                    })
+                    .then(response => {
+                        fs.writeFileSync("./access", response.data.refresh_token);
+                        resolve(response.data.access_token);
+                    });
+                }
+            }).listen(3000);
+
+            console.log(`AUTHORIZE: https://osu.ppy.sh/oauth/authorize?client_id=${config.credentials.osu.devApp.clientID}&redirect_uri=http://localhost:3000&response_type=code&scope=public`);
+        } else {
+            axios({
+                method: "POST", 
+                url: `https://osu.ppy.sh/oauth/token`,
+                data: {
+                    "client_id": config.credentials.osu.devApp.clientID,
+                    "client_secret": config.credentials.osu.devApp.clientSecret,
+                    "refresh_token": fs.readFileSync("./access", "utf8"),
+                    "grant_type": "refresh_token",
+                },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                }
+            })
+            .then(response => {
+                fs.writeFileSync("./access", response.data.refresh_token);
+                resolve(response.data.access_token);
+            });
+        }
+    });
+}
 
 function calculate(id, mods = null) {
     return new Promise(async resolve => {
