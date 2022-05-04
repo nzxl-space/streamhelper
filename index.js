@@ -91,7 +91,7 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
                 return;
             }
 
-            let beatmapLink, beatmapId, setId, modsText;
+            let beatmapLink, beatmapId, setId, modsText, beatmapCalc;
             message.forEach(msg => {
                 if(msg.match(osuLink) && msg.match(osuLink)[0] == "https://osu.ppy.sh/beatmapsets/") {
                     beatmapLink = msg, beatmapId = msg.match(osuLink)[1], setId = msg.match(osuLink)[2];
