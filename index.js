@@ -55,8 +55,8 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
             user = config.users[`${channel.replace(/\#/, "")}`];
 
             if(message[0] == "!np") {
-                console.log(`Request for currently playing map in ${channel}`);
                 if(beatmapCache.get(`${user.discord}`)) {
+                    console.log(`Request for currently playing map in ${channel}`);
                     axios({
                         method: "GET", 
                         url: `https://osu.ppy.sh/api/v2/beatmapsets/search?m=0&q=${beatmapCache.get(`${user.discord}`).map}&s=any`,
@@ -101,9 +101,10 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
             });
 
             if(beatmapId) {
-                console.log(`New map request in ${channel}`);
                 bancho.osuApi.beatmaps.getBySetId(beatmapId).then(async (x) => {
                     if(x.length <= 0) return;
+
+                    console.log(`New map request in ${channel}`);
 
                     for(s in x) {
                         if(x[s].id == setId) {
@@ -114,7 +115,7 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
                     if(!beatmapCalc) beatmapCalc = x[0];
 
                     calc = await calculate(beatmapCalc.id, modsText);
-                    bancho.getUser(user.osu).sendMessage(`[${tags["mod"] || tags["subscriber"] || tags["badges"] && tags.badges["vip"] ? "★" : "❥"}] ${tags["username"]} » [${beatmapLink} ${beatmapCalc.artist} - ${beatmapCalc.title} [${beatmapCalc.version}]] ${modsText ? "+"+modsText : ""} | 95%: ${calc.b}pp | 98%: ${calc.a}pp | 99%: ${calc.s}pp | 100%: ${calc.ss}pp | ${moment.utc(beatmapCalc.totalLength*1000).format("mm:ss")} - ★ ${calc.stars} - ♫ ${(beatmapCalc.countNormal+beatmapCalc.countSlider+beatmapCalc.countSpinner)} - AR${calc.ar} - OD${calc.od}`).then(() => {
+                    bancho.getUser(user.osu).sendMessage(`[${tags["mod"] || tags["subscriber"] || tags["badges"] && tags.badges["vip"] ? "★" : "♦"}] ${tags["username"]} » [${beatmapLink} ${beatmapCalc.artist} - ${beatmapCalc.title} [${beatmapCalc.version}]] ${modsText ? "+"+modsText : ""} | 95%: ${calc.b}pp | 98%: ${calc.a}pp | 99%: ${calc.s}pp | 100%: ${calc.ss}pp | ${moment.utc(beatmapCalc.totalLength*1000).format("mm:ss")} - ★ ${calc.stars} - ♫ ${(beatmapCalc.countNormal+beatmapCalc.countSlider+beatmapCalc.countSpinner)} - AR${calc.ar} - OD${calc.od}`).then(() => {
                         twitch.say(channel, "/me Request sent!");
                     });
                 });
