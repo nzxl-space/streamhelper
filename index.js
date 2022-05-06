@@ -77,7 +77,7 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
                                 if(found) {
                                     wFound = true;
                                     calc = await calculate(found.id, mods);
-                                    twitch.say(channel, `${moment.utc(beatmapCache.get(`${user.discord}`).timestamp*1000).format("HH:mm")} » ${currentlyPlaying}${mods ? " +"+mods : ""} - ${found.url} | 95%: ${calc.b}pp | 98%: ${calc.a}pp | 99%: ${calc.s}pp | 100%: ${calc.ss}pp | ${moment.utc(found.total_length*1000).format("mm:ss")} - ★ ${calc.stars} - ♫ ${(found.count_circles+found.count_sliders+found.count_spinners)} - AR${calc.ar} - OD${calc.od}`);
+                                    twitch.say(channel, `${moment.utc(beatmapCache.get(`${user.discord}`).timestamp*1000).format("HH:mm")} » ${currentlyPlaying}${mods ? " +"+mods : ""} - ${found.url} | 95%: ${calc.b}pp | 98%: ${calc.a}pp | 99%: ${calc.s}pp | 100%: ${calc.ss}pp | ${calc.length} - ★ ${calc.stars} - ♫ ${(found.count_circles+found.count_sliders+found.count_spinners)} - AR${calc.ar} - OD${calc.od}`);
                                     break;
                                 }
                             }
@@ -115,7 +115,7 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
                     if(!beatmapCalc) beatmapCalc = x[0];
 
                     calc = await calculate(beatmapCalc.id, modsText);
-                    bancho.getUser(user.osu).sendMessage(`[${tags["mod"] || tags["subscriber"] || tags["badges"] && tags.badges["vip"] ? "★" : "♦"}] ${tags["username"]} » [${beatmapLink} ${beatmapCalc.artist} - ${beatmapCalc.title} [${beatmapCalc.version}]] ${modsText ? "+"+modsText : ""} | 95%: ${calc.b}pp | 98%: ${calc.a}pp | 99%: ${calc.s}pp | 100%: ${calc.ss}pp | ${moment.utc(beatmapCalc.totalLength*1000).format("mm:ss")} - ★ ${calc.stars} - ♫ ${(beatmapCalc.countNormal+beatmapCalc.countSlider+beatmapCalc.countSpinner)} - AR${calc.ar} - OD${calc.od}`).then(() => {
+                    bancho.getUser(user.osu).sendMessage(`[${tags["mod"] || tags["subscriber"] || tags["badges"] && tags.badges["vip"] ? "★" : "♦"}] ${tags["username"]} » [${beatmapLink} ${beatmapCalc.artist} - ${beatmapCalc.title} [${beatmapCalc.version}]] ${modsText ? "+"+modsText : ""} | 95%: ${calc.b}pp | 98%: ${calc.a}pp | 99%: ${calc.s}pp | 100%: ${calc.ss}pp | ${calc.length} - ★ ${calc.stars} - ♫ ${(beatmapCalc.countNormal+beatmapCalc.countSlider+beatmapCalc.countSpinner)} - AR${calc.ar} - OD${calc.od}`).then(() => {
                         twitch.say(channel, "/me Request sent!");
                     });
                 });
@@ -196,6 +196,7 @@ function calculate(id, mods = null) {
             "stars": Math.round(rating.pcStars.total * 100) / 100,
             "ar": Math.round(rating.pcStars.stats.ar * 100) / 100,
             "od": Math.round(rating.pcStars.stats.od * 100) / 100,
+            "length": moment.utc((mods.filter(x => x.name == "DT").length >= 1 ? ((beatmapCalc.totalLength*(1 - 33/100))*1000) : beatmapCalc.totalLength)).format("mm:ss")
         });
 
         console.timeEnd(`Calculating ${id}`);
