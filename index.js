@@ -1,53 +1,85 @@
-const config = require("./config.json");
+const [config, tmi, Banchojs, moment, axios, fs, NodeCache, { Client, Intents }, { MapInfo, ModUtil }, { MapStars, OsuPerformanceCalculator }, cron, open, url, sqlite3] = requireMany("./config.json", "tmi.js", "bancho.js", "moment", "axios", "fs", "node-cache", "discord.js", "@rian8337/osu-base", "@rian8337/osu-difficulty-calculator", "cron", "open", "url", "sqlite3");
 process.env["OSU_API_KEY"] = config.credentials.osu.apiKey;
-
-const tmi = require("tmi.js");
-const Banchojs = require("bancho.js");
-const moment = require("moment");
-const axios = require("axios");
-const http = require("http");
-const url = require("url");
-const fs = require("fs");
-const { Client, Intents } = require('discord.js');
-const { MapInfo, ModUtil } = require("@rian8337/osu-base");
-const { MapStars, OsuPerformanceCalculator } = require("@rian8337/osu-difficulty-calculator");
-const NodeCache = require( "node-cache" );
+const regEx = {
+    "beatmapLink": /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]+)/g,
+    "beatmapMods": /^\+|(EZ)|(NF)|(HT)|(SD)|(HD)|(HR)|(DT)|(FL)|(RX)|(SO)/i
+}
+// storing basic data like set id, name
 const beatmapCache = new NodeCache();
-const CronJob = require('cron').CronJob;
+// create tmi.js instance
+const twitch = new tmi.Client({ identity: { username: config.credentials.twitch.username, password: config.credentials.twitch.password }, channels: Object.keys(config.users) });
+// create bancho instance
+const bancho = new Banchojs.BanchoClient({ username: config.credentials.osu.username, password: config.credentials.osu.password, apiKey: config.credentials.osu.apiKey });
+// create discord instance
+const discord = new Client({ intents: [ Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_PRESENCES, Intents.FLAGS.GUILD_MEMBERS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_WEBHOOKS, Intents.FLAGS.DIRECT_MESSAGES ] });
+// websocket
+const io = require("socket.io")(2048, { cors: { origin: "*" } });
+// restart process automatically
+new cron.CronJob('0 2 * * *', () => process.exit(1), null, true, 'UTC').start();
+// storage
+const db = new sqlite3.Database("./osu-request-bot.db");
 
-let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]+)/g, osuMods = /^\+|(EZ)|(NF)|(HT)|(SD)|(HD)|(HR)|(DT)|(FL)|(RX)|(SO)/i, accessToken, twitch, bancho, discord;
+(async () => {
+    let accessToken, sockets = {};
 
-(() => {
-    twitch = new tmi.Client({ identity: { username: config.credentials.twitch.username, password: config.credentials.twitch.password }, channels: Object.keys(config.users) });
-    bancho = new Banchojs.BanchoClient({ username: config.credentials.osu.username, password: config.credentials.osu.password, apiKey: config.credentials.osu.apiKey });
-    discord = new Client({ intents: [ Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_PRESENCES, Intents.FLAGS.GUILD_MEMBERS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_WEBHOOKS, Intents.FLAGS.DIRECT_MESSAGES ] });
-
-    new CronJob('0 2 * * *', () => process.exit(1), null, true, 'UTC').start();
-
-    twitch.connect().then(async () => {
-        console.log("Twitch connected");
-        await bancho.connect().then(() => console.log("Bancho connected"));
-        await discord.login(config.credentials.discord.token).then(() => console.log("Discord connected"));
-        accessToken = await generate();
-
-        setInterval(() => {
-            Object.keys(config.users).forEach(user => {
-                discord.guilds.cache.get(config.credentials.discord.guild).members.fetch(config.users[`${user}`].discord).then(u => {
-                    if(!u.presence) return;
-
-                    if(u.presence.activities.filter(x => x.name == "osu!" && x.type == "PLAYING" && x.details).length >= 1) {
-                        currentMap = u.presence.activities.filter(x => x.name == "osu!" && x.type == "PLAYING")[0].details;
-                    
-                        if(beatmapCache.get(`${config.users[`${user}`].discord}`) && beatmapCache.get(`${config.users[`${user}`].discord}`).map == currentMap)
-                            return;
+    db.run("CREATE TABLE IF NOT EXISTS users (username varchar(20) NOT NULL PRIMARY KEY, twitch varchar(20) NULL, discord bigint(20) NULL, secret int(8) NULL, hwid varchar(50) NULL, verified tinyint(1) DEFAULT 0)");
+    // db.run("INSERT INTO \"users\" (\"username\") VALUES (\"kiyomii\")");
     
-                        beatmapCache.set(`${config.users[`${user}`].discord}`, { map: currentMap, timestamp: Math.floor(Date.now() / 1000) });
-                        console.log(`${config.users[`${user}`].osu} is playing ${currentMap}`);
+    io.on("connection", (socket) => {
+        socket.on("generateAuth", (s) => {
+            db.all(`SELECT hwid, verified FROM users WHERE username = \"${s.osu}\"`, (err, rows) => {
+                if(err || rows.length <= 0) return socket.emit("verify", false);
+                if(s.id == rows[0].hwid || rows[0].hwid == null & rows[0].verified == 0) {
+                    let generated = ((Math.random() + 1).toString(36).substring(7));
+                    db.run(`UPDATE users SET secret = \"${generated}\", hwid = \"${s.id}\" WHERE username = \"${s.osu}\"`, (err) => {
+                        if(!err) {
+                            socket.emit("verify", true, generated);
+                            sockets[generated] = socket;
+                        }
+                    });
+                }
+            });
+        });
+
+        socket.on("auth", (d) => {
+            db.all(`SELECT username FROM users WHERE username = \"${d.osu}\" AND secret = \"${d.secret}\"`, (err, rows) => {
+                if(err || rows.length <= 0) return socket.emit("loggedIn", false);
+
+                socket.emit("loggedIn", true, rows[0].username);
+                sockets[rows[0].secret] = socket;
+            });
+        });
+    });
+    io.httpServer.on("request", req => { if(url.parse(req.url, true).query.code) axios.post(`https://osu.ppy.sh/oauth/token`, { client_id: config.credentials.osu.devApp.clientID, client_secret: config.credentials.osu.devApp.clientSecret, code: url.parse(req.url, true).query.code, redirect_uri: "http://localhost:2048", grant_type: "authorization_code" }).then(x => { fs.writeFileSync("./access", x.data.refresh_token); accessToken = x.data.access_token; }); });
+
+    if(!fs.existsSync("./access")) open(`https://osu.ppy.sh/oauth/authorize?client_id=${config.credentials.osu.devApp.clientID}&redirect_uri=http://localhost:2048&response_type=code&scope=public`);
+        else axios.post(`https://osu.ppy.sh/oauth/token`, { client_id: config.credentials.osu.devApp.clientID, client_secret: config.credentials.osu.devApp.clientSecret, refresh_token: fs.readFileSync("./access", "utf8"), grant_type: "refresh_token" }).then(x => { fs.writeFileSync("./access", x.data.refresh_token); accessToken = x.data.access_token; });
+
+    while(!accessToken) {
+        await new Promise(p => setTimeout(p, 500));
+    }
+
+    bancho.on("connected", () => {
+        console.log("Bancho connected");
+        bancho.on("PM", (message) => {
+            args = message.message.replace("!", "").split(" ");
+            if(args[0] == "verify") {
+                db.all(`SELECT * FROM users WHERE secret = \"${args[1]}\"`, (err, rows) => {
+                    if(err || rows.length <= 0) return;
+                    if(rows[0].username == message.user.ircUsername) {
+                        db.run(`UPDATE users SET verified = \"1\" WHERE username = \"${rows[0].username}\" AND secret = \"${rows[0].secret}\"`, (err) => {
+                            if(!err) {
+                                sockets[rows[0].secret].emit("success", rows[0].username, rows[0].secret);
+                            }
+                        });
                     }
                 });
-            });
-        }, 3*1000);
+            }
+        });
+    });
 
+    twitch.on("connected", () => {
+        console.log("Twitch connected");
         twitch.on("message", (channel, tags, message, self) => {
             if(!Object.keys(config.users).includes(`${channel.replace(/\#/, "")}`)) return;
 
@@ -122,82 +154,67 @@ let osuLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]
             }
         });
     });
+
+
+
+    discord.on("ready", () => {
+        console.log("Discord connected");
+        setInterval(() => {
+            Object.keys(config.users).forEach(user => {
+                discord.guilds.cache.get(config.credentials.discord.guild).members.fetch(config.users[`${user}`].discord).then(u => {
+                    if(!u.presence) return;
+
+                    if(u.presence.activities.filter(x => x.name == "osu!" && x.type == "PLAYING" && x.details).length >= 1) {
+                        currentMap = u.presence.activities.filter(x => x.name == "osu!" && x.type == "PLAYING")[0].details;
+                    
+                        if(beatmapCache.get(`${config.users[`${user}`].discord}`) && beatmapCache.get(`${config.users[`${user}`].discord}`).map == currentMap)
+                            return;
     
+                        beatmapCache.set(`${config.users[`${user}`].discord}`, { map: currentMap, timestamp: Math.floor(Date.now() / 1000) });
+                        console.log(`${config.users[`${user}`].osu} is playing ${currentMap}`);
+                    }
+                });
+            });
+        }, 3*1000);
+    });
+
+    // await discord.login(config.credentials.discord.token);
+    await bancho.connect();
+    // await twitch.connect();
 })();
 
-function generate(accessToken = fs.existsSync("./access")) {
-    return new Promise(resolve => {
-        if(!accessToken) {
-            http.createServer((req, res) => {
-                let queryObject = url.parse(req.url, true).query;
-                if(queryObject.code) {
-                    res.writeHead(200);
-                    res.end("<script>window.close();</script>");
-        
-                    axios({
-                        method: "POST", 
-                        url: `https://osu.ppy.sh/oauth/token`,
-                        data: {
-                            "client_id": config.credentials.osu.devApp.clientID,
-                            "client_secret": config.credentials.osu.devApp.clientSecret,
-                            "code": queryObject.code,
-                            "grant_type": "authorization_code",
-                            "redirect_uri": "http://localhost:3000"
-                        },
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Accept": "application/json"
-                        }
-                    })
-                    .then(response => {
-                        fs.writeFileSync("./access", response.data.refresh_token);
-                        resolve(response.data.access_token);
-                    });
-                }
-            }).listen(3000);
-
-            console.log(`AUTHORIZE: https://osu.ppy.sh/oauth/authorize?client_id=${config.credentials.osu.devApp.clientID}&redirect_uri=http://localhost:3000&response_type=code&scope=public`);
-        } else {
-            axios({
-                method: "POST", 
-                url: `https://osu.ppy.sh/oauth/token`,
-                data: {
-                    "client_id": config.credentials.osu.devApp.clientID,
-                    "client_secret": config.credentials.osu.devApp.clientSecret,
-                    "refresh_token": fs.readFileSync("./access", "utf8"),
-                    "grant_type": "refresh_token",
-                },
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                }
-            })
-            .then(response => {
-                fs.writeFileSync("./access", response.data.refresh_token);
-                resolve(response.data.access_token);
-            });
+function requireMany () {
+    return Array.prototype.slice.call(arguments).map(function (value) {
+        try {
+            return require(value)
         }
-    });
+        catch (event) {
+            return console.log(event)
+        }
+    })
 }
 
 function calculate(id, mods = null) {
     return new Promise(async resolve => {
-        console.time(`Calculating ${id}`);
+        console.time(`[${id}]`);
 
-        if(mods && mods.match(osuMods)) mods = ModUtil.pcStringToMods(mods);
         beatmapInfo = await MapInfo.getInformation({ beatmapID: id });
-        rating = new MapStars().calculate({ map: beatmapInfo.map, mods: mods });
+        rating = new MapStars().calculate({ map: beatmapInfo.map, mods: (mods && mods.match(regEx.beatmapMods) ? ModUtil.pcStringToMods(mods) : null) });
 
         resolve({
-            "b": Math.round(new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 95 }).total),
-            "a": Math.round(new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 98 }).total),
-            "s": Math.round(new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 99 }).total),
-            "ss": Math.round(new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 100 }).total),
-            "stars": Math.round(rating.pcStars.total * 100) / 100,
-            "ar": Math.round(rating.pcStars.stats.ar * 100) / 100,
-            "od": Math.round(rating.pcStars.stats.od * 100) / 100,
+            "map": {
+                "stars": Math.round(rating.pcStars.total * 100) / 100,
+                "ar": Math.round(rating.pcStars.stats.ar * 100) / 100,
+                "od": Math.round(rating.pcStars.stats.od * 100) / 100,
+            },
+            "pp": {
+                "95": Math.round(new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 95 }).total),
+                "98": Math.round(new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 98 }).total),
+                "99": Math.round(new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 99 }).total),
+                "100": Math.round(new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 100 }).total)
+            }
         });
 
-        console.timeEnd(`Calculating ${id}`);
+        console.timeEnd(`[${id}]`);
     });
 }

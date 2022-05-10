@@ -3,3 +3,7 @@ package-lock.json
 .env
 access
 config.json
+client/bin
+client/obj
+.vscode
+osu-request-bot.db
