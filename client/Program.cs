@@ -13,8 +13,8 @@ namespace client
 {
     class Program
     {
-        static String url = "https://ws.nzxl.space:443";
-        // static String url = "http://localhost:2048";
+        // static String url = "https://ws.nzxl.space:443";
+        static String url = "http://localhost:2048";
         static Boolean _quitFlag = false;
         static StructuredOsuMemoryReader _sreader;
         static OsuBaseAddresses BaseAddresses = new OsuBaseAddresses();
@@ -85,9 +85,13 @@ namespace client
                             _sreader.TryRead(BaseAddresses.ResultsScreen);
                             _sreader.TryRead(BaseAddresses.GeneralData);
 
-                            var mods = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.MainMenu ? parseMods(BaseAddresses.GeneralData.Mods) : BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? parseMods(BaseAddresses.ResultsScreen.Mods.Value) : parseMods(BaseAddresses.Player.Mods.Value);
-                            if(socket.Connected && BaseAddresses.GeneralData.GameMode == 0) await socket.EmitAsync("osuData", new { playing = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.Playing || BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? true : false, secret = key.GetValue("secret").ToString(), setId = BaseAddresses.Beatmap.SetId, id = BaseAddresses.Beatmap.Id, name = BaseAddresses.Beatmap.MapString, md5 = BaseAddresses.Beatmap.Md5, mods = (mods.Count >= 1 ? "+"+string.Join("", mods) : ""), skin = BaseAddresses.Skin.Folder, hit50 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit50 : BaseAddresses.Player.Hit50, hit100 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit100 : BaseAddresses.Player.Hit100, hit300 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit300 : BaseAddresses.Player.Hit300, hitMiss = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.HitMiss : BaseAddresses.Player.HitMiss, maxCombo = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.MaxCombo : BaseAddresses.Player.MaxCombo, accuracy = BaseAddresses.Player.Accuracy  });
-                            
+                            try {
+                                var mods = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.MainMenu ? parseMods(BaseAddresses.GeneralData.Mods) : BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? parseMods(BaseAddresses.ResultsScreen.Mods.Value) : parseMods(BaseAddresses.Player.Mods.Value);
+                                if(socket.Connected && BaseAddresses.GeneralData.GameMode == 0) await socket.EmitAsync("osuData", new { playing = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.Playing || BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? true : false, secret = key.GetValue("secret").ToString(), setId = BaseAddresses.Beatmap.SetId, id = BaseAddresses.Beatmap.Id, name = BaseAddresses.Beatmap.MapString, md5 = BaseAddresses.Beatmap.Md5, mods = (mods.Count >= 1 ? "+"+string.Join("", mods) : ""), skin = BaseAddresses.Skin.Folder, hit50 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit50 : BaseAddresses.Player.Hit50, hit100 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit100 : BaseAddresses.Player.Hit100, hit300 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit300 : BaseAddresses.Player.Hit300, hitMiss = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.HitMiss : BaseAddresses.Player.HitMiss, maxCombo = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.MaxCombo : BaseAddresses.Player.MaxCombo, accuracy = BaseAddresses.Player.Accuracy  });
+                            } catch (Exception e) {
+                                continue;
+                            }
+
                             await Task.Delay(TimeSpan.FromSeconds(1), cts.Token);
                         }
                     } else {

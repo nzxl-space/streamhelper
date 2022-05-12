@@ -3,11 +3,7 @@
         "osu": {
             "username": "<OSU USERNAME>",
             "password": "<OSU IRC PASSWORD>",
-            "apiKey": "<OSU API KEY>",
-            "devApp": {
-                "clientID": "<OSU APP ID>",
-                "clientSecret": "<OSU APP SECRET>"
-            }
+            "apiKey": "<OSU API KEY>"
         },
         "twitch": {
             "username": "<TWITCH USERNAME>",
@@ -17,11 +13,5 @@
             "token": "<DISCORD TOKEN>",
             "guild": "<DISCORD SERVER>"
         }
-    },
-    "users": {
-        "<TWITCH CHANNEL IN LOWERCASE>": {
-            "osu": "<OSU USERNAME>",
-            "discord": "<DISCORD USER ID>"
-        },
     }
 }
