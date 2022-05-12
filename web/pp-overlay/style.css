@@ -1,0 +1,214 @@
+@import url('https://fonts.googleapis.com/css2?family=Varela+Round&display=swap');
+
+
+/* --------------------------
+
+		Moved to Config.css 
+
+    ------------------------- */
+
+
+
+
+/* Do Not Touch unless you know what you are doing! */
+body {
+  font-family: 'Varela Round', sans-serif;
+  padding: 50px;
+  margin: 0;
+  width: var(--width);
+  height: var(--height);
+}
+html {
+	font-size: var(--font-size);
+}
+
+#main-container, #bg-wrapper, #bg-container, #bg-container img, #track-container {
+  position: absolute;
+  width: var(--width);
+  height: var(--height);
+}
+
+#main-container{
+  background: var(--bg-color);
+  border-radius: 30px;
+  overflow: hidden;
+  box-shadow: var(--bg-shadow);
+}
+
+/* Background Container */
+#bg-wrapper{
+  z-index: 1;
+}
+
+#bg-container {
+  overflow: hidden;
+  background: rgba(0,0,0, var(--bg-opacity));
+}
+
+#bg-container img {
+  filter: blur(1px);
+  object-fit: cover;
+  z-index: -1;
+  transition: all 1s ease;
+}
+
+/* Title & Artist Container */
+#track-container {
+  z-index: 10;
+  color: var(--font-primary);
+  text-align: center;
+  font-size: 1.5em;
+  letter-spacing: 2px;
+  text-shadow: var(--font-shadow);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  transition: transform 1s ease;
+}
+
+.title, .artist {
+  width: 700px;
+  -webkit-mask-image: linear-gradient(to right, transparent 10%, black 20%,black 80%, transparent 90%);
+  mask-image: linear-gradient(to right, transparent 20%, black 30%,black 70%, transparent 80%);
+  
+  white-space: nowrap;
+  overflow: hidden;
+ }
+
+ .title {
+  font-weight: bolder;
+  font-size: 1.4em;
+ }
+ 
+ .artist {
+  font-size: 1.2em;
+  font-weight: normal;
+ }
+
+/* Info Container */
+#info-container{
+  opacity: 0;
+  position: absolute;
+  bottom: -500px;
+ 
+  width: var(--width);
+  height: 100px;
+ 
+  z-index: 1;
+  display:flex;
+  flex-direction: row;
+  justify-content: space-around;
+ 
+  font-weight: bold;
+  text-shadow: var(--font-shadow);
+  
+  transition: transform 1.5s ease, opacity 1.5s ease;
+ }
+ #pp-container, .h100, .h50, .h0, .rank{
+  display:flex;
+  justify-content: center;
+  align-items: center;
+ }
+ 
+ #pp-container{
+  margin-top: -15px;
+  width: 300px;
+  height: 100px;
+ 
+  color: var(--font-primary);
+  font-size: 3.5em;
+  text-align: center;
+ }
+ 
+ .accent {
+  color: var(--font-accent);
+ }
+ 
+ .h100, .h50, .h0{
+  width: 100px;
+  height: 100px;
+ 
+  color: var(--font-primary);
+  font-size: 2.5em;
+  text-align: center;
+ 
+  line-height: 0.4ch;
+  margin-top: 40px;
+ 
+  flex-direction: column;
+ }
+ 
+ .h100 hr, .h50 hr, .h0 hr{
+  height: 10px;
+  width: 20px;
+  border-radius: 6px;
+  border: none;
+ }
+ 
+ .h100 hr{
+  background-color: rgb(90, 221, 90);
+  box-shadow: 0px 0px 25px rgb(90, 221, 90);
+ }
+ .h50 hr{
+  background-color: rgb(167, 4, 167);
+  box-shadow: 0px 0px 25px rgb(167, 4, 167);
+ }
+ .h0 hr{
+  background-color:rgb(255, 20, 20);
+  box-shadow: 0px 0px 25px rgb(255, 20, 20);
+ }
+ 
+ .rank{
+  margin-right: 20px;
+  margin-top: -15px;
+  width: 150px;
+  height: 100px;
+ 
+  color: var(--font-primary);
+  font-size: 6.9em;
+  text-align: center;
+ }
+ 
+ .track-img img {
+  width: 500px;
+  height: 500px;
+  object-fit: cover;
+  border-radius: 50%;
+  position: absolute;
+  top: -150%;
+  left: -100px;
+ 
+  opacity: 0.35;
+  z-index: -1;
+ }
+
+/* Click Animation */
+.click{
+  animation: click 100ms 2 ease;
+  animation-direction: alternate;
+}
+@keyframes click{
+  0%{
+      transform: scale(1);
+  }
+  100%{
+      transform: scale(0.9);
+  }
+}
+
+/* Text Scroll Animation */
+.textScroll{
+  display: inline-block;
+  animation: scroll 6s linear 0s infinite;
+}
+@keyframes scroll{
+  0% {
+    transform: translateX(100%);
+  }
+  100%{
+    transform: translateX(-100%);
+  }
+}

@@ -1,10 +1,13 @@
-﻿using System.Threading.Tasks;
-using System.Net.Mime;
+﻿using System.Diagnostics;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.Win32;
 using System.Threading;
+using System.Linq;
 using System;
 using SocketIOClient;
+using OsuMemoryDataProvider;
+using OsuMemoryDataProvider.OsuMemoryModels;
 
 namespace client
 {
@@ -13,6 +16,9 @@ namespace client
         // static String url = "https://ws.nzxl.space:443";
         static String url = "http://localhost:2048";
         static Boolean _quitFlag = false;
+        static StructuredOsuMemoryReader _sreader;
+        static OsuBaseAddresses BaseAddresses = new OsuBaseAddresses();
+        static CancellationTokenSource cts = new CancellationTokenSource();
 
         static void Main(string[] args)
         {
@@ -21,31 +27,29 @@ namespace client
             var guid = GetMachineGuid();
             var socket = connect();
 
-            if(socket.Connected)
-            {
+            if(socket.Connected) {
                 Console.Clear();
-                Console.Write("Connected to {0}\n", url);
-                Task.Run(() => {
-                    while(true) {
+                Console.WriteLine("Connected to {0}", url);
+
+                Task.Run(async () => {
+                    while(!cts.IsCancellationRequested) {
                         if(socket.Disconnected) {
-                            Main(args);
-                            break;
-                        }
-                        Thread.Sleep(500);
+                            socket.Dispose();
+                            restartApp(args, cts);
+                        } else await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
                     }
                 });
             }
 
-            if(Registry.CurrentUser.OpenSubKey(@"SOFTWARE\kiyomii") == null)
-            {
+            if(Registry.CurrentUser.OpenSubKey(@"SOFTWARE\kiyomii") == null) {
                 string username;
-                Console.Write("Please enter your osu! username: ");
+                Console.WriteLine("Please enter your osu! username: ");
                 username = Console.ReadLine();
 
                 socket.EmitAsync("generateAuth", new { osu = username, id = guid });
                 socket.On("verify", x => {
                     if(x.GetValue<Boolean>(0) != false) {
-                        Console.Write("\nPlease verify your identity by sending `!verify {0}` to kiyomii in osu!.", x.GetValue<String>(1));
+                        Console.WriteLine("Please verify your identity by sending `!verify {0}` to kiyomii in osu!.", x.GetValue<String>(1));
                         socket.On("success", n => {
                             RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\kiyomii");
                             key.SetValue("username", n.GetValue<String>(0));
@@ -54,37 +58,52 @@ namespace client
                             Main(args);
                         });
                     } else {
-                        Console.Write("It seems like your account is not enabled yet. Slide into my dms (nzxl#6334) to resolve.");
+                        Console.WriteLine("It seems like your account is not enabled yet. Slide into my dms (nzxl#6334) to resolve.");
                         quitApp();
                     }
                 });
             }
             
             RegistryKey key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\kiyomii");
-            if(key != null) 
-            {
+            if(key != null) {
                 socket.EmitAsync("auth", new { osu = key.GetValue("username").ToString(), secret = key.GetValue("secret").ToString() });
-                socket.On("loggedIn", u => {
+                socket.On("loggedIn", async u => {
                     if(u.GetValue<Boolean>(0) != false) {
-                        Console.Write("Logged in as {0}!", u.GetValue<String>(1));
+                        Console.WriteLine("Logged in as {0}!", u.GetValue<String>(1));
+                        while (!cts.IsCancellationRequested) {
+                            _sreader = StructuredOsuMemoryReader.Instance.GetInstanceForWindowTitleHint(args.FirstOrDefault());
+
+                            while(Process.GetProcessesByName("osu!").Length == 0 && !_sreader.CanRead) {
+                                await Task.Delay(TimeSpan.FromSeconds(30), cts.Token);
+                                continue;
+                            }
+
+                            _sreader.TryRead(BaseAddresses.Beatmap);
+                            _sreader.TryRead(BaseAddresses.Skin);
+                            _sreader.TryRead(BaseAddresses.Player);
+                            _sreader.TryRead(BaseAddresses.ResultsScreen);
+                            _sreader.TryRead(BaseAddresses.GeneralData);
+
+                            var mods = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.MainMenu ? parseMods(BaseAddresses.GeneralData.Mods) : BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? parseMods(BaseAddresses.ResultsScreen.Mods.Value) : parseMods(BaseAddresses.Player.Mods.Value);
+                            if(socket.Connected && BaseAddresses.GeneralData.GameMode == 0) await socket.EmitAsync("osuData", new { playing = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.Playing || BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? true : false, secret = key.GetValue("secret").ToString(), setId = BaseAddresses.Beatmap.SetId, id = BaseAddresses.Beatmap.Id, name = BaseAddresses.Beatmap.MapString, md5 = BaseAddresses.Beatmap.Md5, mods = (mods.Count >= 1 ? "+"+string.Join("", mods) : ""), skin = BaseAddresses.Skin.Folder, hit50 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit50 : BaseAddresses.Player.Hit50, hit100 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit100 : BaseAddresses.Player.Hit100, hit300 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit300 : BaseAddresses.Player.Hit300, hitMiss = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.HitMiss : BaseAddresses.Player.HitMiss, maxCombo = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.MaxCombo : BaseAddresses.Player.MaxCombo, accuracy = BaseAddresses.Player.Accuracy  });
+                            
+                            await Task.Delay(TimeSpan.FromSeconds(1), cts.Token);
+                        }
                     } else {
-                        Console.Write("Failed to login due to an invalid secret or hwid. Slide into my dms (nzxl#6334) to resolve.");
+                        Console.WriteLine("Failed to login due to an invalid secret or hwid. Slide into my dms (nzxl#6334) to resolve.");
                         quitApp();
                     }
                 });
             }
 
-            while(!_quitFlag)
-            {
+            while(!_quitFlag) {
                 var keyInfo = Console.ReadKey(true);
                 _quitFlag = keyInfo.Key == ConsoleKey.C && keyInfo.Modifiers == ConsoleModifiers.Control;
             }
         }
 
-        static SocketIO connect()
-        {
+        static SocketIO connect() {
             Console.Write("Connecting to server..\t");
-
             var client = new SocketIO(url);
             client.ConnectAsync();
 
@@ -103,15 +122,12 @@ namespace client
             return client;
         }
 
-        static String GetMachineGuid()
-        {
+        static String GetMachineGuid() {
             string location = @"SOFTWARE\Microsoft\Cryptography";
             string name = "MachineGuid";
 
-            using (RegistryKey localMachineX64View = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
-            {
-                using (RegistryKey rk = localMachineX64View.OpenSubKey(location))
-                {
+            using (RegistryKey localMachineX64View = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64)) {
+                using (RegistryKey rk = localMachineX64View.OpenSubKey(location)) {
                     if (rk == null)
                         throw new KeyNotFoundException(string.Format("Key Not Found: {0}", location));
 
@@ -124,9 +140,33 @@ namespace client
             }
         }
 
+        static void restartApp(string[] args, CancellationTokenSource cts) {
+            Main(args);
+            cts.Cancel();
+        }
+
         static void quitApp() {
-            Thread.Sleep(5000);
+            Thread.Sleep(5*1000);
             Environment.Exit(0);
+        }
+
+        static List<string> parseMods(int num) {
+            List<string> mods = new List<string>();
+
+            if((num & 1<<0) != 0) mods.Add("NF");
+            if((num & 1<<1) != 0) mods.Add("EZ");
+            if((num & 1<<3) != 0) mods.Add("HD");
+            if((num & 1<<4) != 0) mods.Add("HR");
+            if((num & 1<<5) != 0) mods.Add("SD");
+            if((num & 1<<9) != 0) mods.Add("NC");
+            else if((num & 1<<6) != 0) mods.Add("DT");
+            if((num & 1<<7) != 0) mods.Add("RX");
+            if((num & 1<<8) != 0) mods.Add("HT");
+            if((num & 1<<10) != 0) mods.Add("FL");
+            if((num & 1<<12) != 0) mods.Add("SO");
+            if((num & 1<<14) != 0) mods.Add("PF");
+
+            return mods;
         }
     }
 }
