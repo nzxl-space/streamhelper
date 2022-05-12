@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.Win32;
 using System.Threading;
+using System.Runtime.InteropServices;
 using System.Linq;
 using System;
 using SocketIOClient;
@@ -22,22 +23,12 @@ namespace client
         static StructuredOsuMemoryReader _sreader;
         static OsuBaseAddresses BaseAddresses = new OsuBaseAddresses();
         static CancellationTokenSource cts = new CancellationTokenSource();
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
         static void Main(string[] args)
         {
             Console.Clear();
-
-            HttpWebRequest webRequest = (HttpWebRequest) WebRequest.Create(url+"/b");
-            HttpWebResponse httpResponse = (HttpWebResponse) webRequest.GetResponse();
-            using (StreamReader responseReader = new StreamReader(httpResponse.GetResponseStream()))
-            {
-                var version = responseReader.ReadToEnd();
-                if(version != build.ToString()) {
-                    Console.Write("You\'re using an outdated version of the client. \nDownload the newest one here: {0}/client.exe", url);
-                    quitApp();
-                    return;
-                }
-            }
 
             var guid = GetMachineGuid();
             var socket = connect();
@@ -54,6 +45,18 @@ namespace client
                         } else await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
                     }
                 });
+            }
+
+            HttpWebRequest webRequest = (HttpWebRequest) WebRequest.Create(url+"/b");
+            HttpWebResponse httpResponse = (HttpWebResponse) webRequest.GetResponse();
+            using (StreamReader responseReader = new StreamReader(httpResponse.GetResponseStream()))
+            {
+                var version = responseReader.ReadToEnd();
+                if(version != build.ToString()) {
+                    Console.Write("You\'re using an outdated version of the client. \nDownload the newest one here: {0}/client.exe", url);
+                    quitApp();
+                    return;
+                }
             }
 
             if(Registry.CurrentUser.OpenSubKey(@"SOFTWARE\kiyomii") == null) {
@@ -85,7 +88,13 @@ namespace client
                 socket.On("loggedIn", async u => {
                     if(u.GetValue<Boolean>(0) != false) {
                         Console.WriteLine("Logged in as {0}!", u.GetValue<String>(1));
-                        Console.WriteLine("PP Overlay now available: {0}/pp-overlay/?s={1}", url, key.GetValue("secret").ToString());
+                        Console.WriteLine();
+                        Console.WriteLine("Overlays:\nPerformance Points: {0}/pp-overlay/?s={1}", url, key.GetValue("secret").ToString());
+                        Console.WriteLine("Keys: {0}/key-overlay/?s={1}", url, key.GetValue("secret").ToString());
+                        Console.WriteLine("Score Farming: {0}/score-overlay/?s={1}", url, key.GetValue("secret").ToString());
+                        Console.WriteLine();
+                        Console.WriteLine("Now Playing (!np) & Beatmap request now available on your Twitch channel");
+                        Console.WriteLine("Hide OBS window with Shift+Tab (Disable In-Game Interface)");
                         while (!cts.IsCancellationRequested) {
                             _sreader = StructuredOsuMemoryReader.Instance.GetInstanceForWindowTitleHint(args.FirstOrDefault());
 
@@ -102,7 +111,13 @@ namespace client
 
                             try {
                                 var mods = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.MainMenu ? parseMods(BaseAddresses.GeneralData.Mods) : BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? parseMods(BaseAddresses.ResultsScreen.Mods.Value) : parseMods(BaseAddresses.Player.Mods.Value);
-                                if(socket.Connected && BaseAddresses.GeneralData.GameMode == 0) await socket.EmitAsync("osuData", new { playing = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.Playing || BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? true : false, secret = key.GetValue("secret").ToString(), setId = BaseAddresses.Beatmap.SetId, id = BaseAddresses.Beatmap.Id, name = BaseAddresses.Beatmap.MapString, md5 = BaseAddresses.Beatmap.Md5, mods = (mods.Count >= 1 ? "+"+string.Join("", mods) : ""), skin = BaseAddresses.Skin.Folder, hit50 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit50 : BaseAddresses.Player.Hit50, hit100 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit100 : BaseAddresses.Player.Hit100, hit300 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit300 : BaseAddresses.Player.Hit300, hitMiss = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.HitMiss : BaseAddresses.Player.HitMiss, maxCombo = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.MaxCombo : BaseAddresses.Player.MaxCombo, accuracy = BaseAddresses.Player.Accuracy  });
+                                if(socket.Connected && BaseAddresses.GeneralData.GameMode == 0) await socket.EmitAsync("osuData", new { playing = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.Playing || BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? true : false, secret = key.GetValue("secret").ToString(), setId = BaseAddresses.Beatmap.SetId, id = BaseAddresses.Beatmap.Id, name = BaseAddresses.Beatmap.MapString, md5 = BaseAddresses.Beatmap.Md5, mods = (mods.Count >= 1 ? "+"+string.Join("", mods) : ""), skin = BaseAddresses.Skin.Folder, hit50 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit50 : BaseAddresses.Player.Hit50, hit100 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit100 : BaseAddresses.Player.Hit100, hit300 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit300 : BaseAddresses.Player.Hit300, hitMiss = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.HitMiss : BaseAddresses.Player.HitMiss, maxCombo = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.MaxCombo : BaseAddresses.Player.MaxCombo, accuracy = BaseAddresses.Player.Accuracy });
+
+                                foreach(Process p in Process.GetProcesses()) {
+                                    if(p.ProcessName == "obs64" || p.ProcessName == "obs32") {
+                                        ShowWindow(p.MainWindowHandle, BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.Playing && BaseAddresses.GeneralData.ShowPlayingInterface == false && BaseAddresses.Player.IsReplay == false ? 2 : 4);
+                                    }
+                                }
                             } catch (Exception e) {
                                 continue;
                             }
