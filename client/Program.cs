@@ -13,8 +13,8 @@ namespace client
 {
     class Program
     {
-        // static String url = "https://ws.nzxl.space:443";
-        static String url = "http://localhost:2048";
+        static String url = "https://ws.nzxl.space:443";
+        // static String url = "http://localhost:2048";
         static Boolean _quitFlag = false;
         static StructuredOsuMemoryReader _sreader;
         static OsuBaseAddresses BaseAddresses = new OsuBaseAddresses();
