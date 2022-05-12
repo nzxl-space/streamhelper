@@ -27,7 +27,7 @@ const db = new sqlite3.Database("./osu-request-bot.db");
 
     http.listen(2048, () => console.log("[info] HTTP listening on Port 2048!"));
     db.run("CREATE TABLE IF NOT EXISTS users (username varchar(20) NOT NULL PRIMARY KEY, twitch varchar(20) NULL, discord bigint(20) NULL, secret int(8) NULL, hwid varchar(50) NULL, verified tinyint(1) DEFAULT 0)");
-    // db.run("INSERT INTO \"users\" (\"username\") VALUES (\"kiyomii\")");
+    // db.run("INSERT INTO \"users\" (\"username\") VALUES (\"JimeranuFan727\")");
     
     http.on("request", (req, res) => {
         q = url.parse(req.url, true);

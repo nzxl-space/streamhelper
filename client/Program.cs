@@ -70,6 +70,7 @@ namespace client
                 socket.On("loggedIn", async u => {
                     if(u.GetValue<Boolean>(0) != false) {
                         Console.WriteLine("Logged in as {0}!", u.GetValue<String>(1));
+                        Console.WriteLine("PP Overlay now available: {0}/pp-overlay/?s={1}", url, key.GetValue("secret").ToString());
                         while (!cts.IsCancellationRequested) {
                             _sreader = StructuredOsuMemoryReader.Instance.GetInstanceForWindowTitleHint(args.FirstOrDefault());
 
