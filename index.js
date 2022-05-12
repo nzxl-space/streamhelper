@@ -20,6 +20,8 @@ const serve = serveStatic(path.join(__dirname, "web"), { index: [ "index.html" ]
 new cron.CronJob('0 2 * * *', () => process.exit(1), null, true, 'UTC').start();
 // storage
 const db = new sqlite3.Database("./osu-request-bot.db");
+// version string
+const build = 1;
 
 (async () => {
     let sockets = {};
@@ -30,8 +32,15 @@ const db = new sqlite3.Database("./osu-request-bot.db");
     http.on("request", (req, res) => {
         q = url.parse(req.url, true);
 
+        if(q.pathname.match(/b/)) {
+            res.statusCode = 200;
+            res.write(`${build}`);
+            res.end();
+            return;
+        }
+
         if(q.pathname.match(/pp-overlay/)) {
-            serve(req, res, finalhandler(req, res));
+            return serve(req, res, finalhandler(req, res));
         }
 
     });

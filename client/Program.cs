@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using System.IO;
+using System.Net;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.Win32;
@@ -13,6 +15,7 @@ namespace client
 {
     class Program
     {
+        static int build = 1;
         // static String url = "https://ws.nzxl.space:443";
         static String url = "http://localhost:2048";
         static Boolean _quitFlag = false;
@@ -23,6 +26,18 @@ namespace client
         static void Main(string[] args)
         {
             Console.Clear();
+
+            HttpWebRequest webRequest = (HttpWebRequest) WebRequest.Create(url+"/b");
+            HttpWebResponse httpResponse = (HttpWebResponse) webRequest.GetResponse();
+            using (StreamReader responseReader = new StreamReader(httpResponse.GetResponseStream()))
+            {
+                var version = responseReader.ReadToEnd();
+                if(version != build.ToString()) {
+                    Console.Write("You\'re using an outdated version of the client. \nDownload the newest one here: {0}/client.exe", url);
+                    quitApp();
+                    return;
+                }
+            }
 
             var guid = GetMachineGuid();
             var socket = connect();
