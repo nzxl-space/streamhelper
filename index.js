@@ -1,4 +1,4 @@
-const [config, tmi, Banchojs, moment, axios, fs, NodeCache, { Client, Intents }, { MapInfo, ModUtil, Accuracy }, { MapStars, OsuPerformanceCalculator }, cron, open, url, sqlite3, httpServer, serveStatic, finalhandler, path] = requireMany("./config.json", "tmi.js", "bancho.js", "moment", "axios", "fs", "node-cache", "discord.js", "@rian8337/osu-base", "@rian8337/osu-difficulty-calculator", "cron", "open", "url", "sqlite3", "http", "serve-static", "finalhandler", "path");
+const [config, tmi, Banchojs, moment, NodeCache, { Client, Intents }, { MapInfo, ModUtil, Accuracy }, { MapStars, OsuPerformanceCalculator }, cron, open, url, sqlite3, httpServer, serveStatic, finalhandler, path] = requireMany("./config.json", "tmi.js", "bancho.js", "moment", "node-cache", "discord.js", "@rian8337/osu-base", "@rian8337/osu-difficulty-calculator", "cron", "open", "url", "sqlite3", "http", "serve-static", "finalhandler", "path");
 process.env["OSU_API_KEY"] = config.credentials.osu.apiKey;
 const regEx = {
     "beatmapLink": /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]+)/g,
