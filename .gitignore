@@ -1,9 +1,12 @@
+# node
 node_modules/
 package-lock.json
-.env
-access
+# config
 config.json
+osu-request-bot.db
+# build stuff
 client/bin
 client/obj
+build/
+# vs settings
 .vscode
-osu-request-bot.db

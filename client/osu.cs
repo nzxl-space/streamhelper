@@ -1,0 +1,7 @@
+namespace client 
+{
+    class osu 
+    {
+        
+    }
+}

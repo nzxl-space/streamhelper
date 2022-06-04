@@ -23,8 +23,11 @@ namespace client
         static StructuredOsuMemoryReader _sreader;
         static OsuBaseAddresses BaseAddresses = new OsuBaseAddresses();
         static CancellationTokenSource cts = new CancellationTokenSource();
+        static Process obs = null;
         [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
 
         static void Main(string[] args)
         {
@@ -41,9 +44,29 @@ namespace client
                     while(!cts.IsCancellationRequested) {
                         if(socket.Disconnected) {
                             socket.Dispose();
-                            restartApp(args, cts);
-                        } else await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
+                            break;
+                        } else {
+                            try {
+                                obs = Process.GetProcessById(obs.Id);
+                            } catch (Exception) {
+                                foreach(Process x in Process.GetProcesses()) {
+                                    if(x.ProcessName == "obs64" || x.ProcessName == "obs32") {
+                                        obs = x;
+                                    }
+                                }
+                            }
+
+                            if(!BaseAddresses.GeneralData.ShowPlayingInterface && !BaseAddresses.Player.IsReplay && BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.Playing) {
+                                if(IsWindowVisible(obs.MainWindowHandle)) ShowWindow(obs.MainWindowHandle, 2);
+                            } else {
+                                if(!IsWindowVisible(obs.MainWindowHandle)) ShowWindow(obs.MainWindowHandle, 4);
+                            }
+                        }
+
+                        await Task.Delay(TimeSpan.FromSeconds(1), cts.Token);
                     }
+                    
+                    restartApp(args, cts);
                 });
             }
 
@@ -103,26 +126,20 @@ namespace client
                                 continue;
                             }
 
-                            _sreader.TryRead(BaseAddresses.Beatmap);
-                            _sreader.TryRead(BaseAddresses.Skin);
-                            _sreader.TryRead(BaseAddresses.Player);
-                            _sreader.TryRead(BaseAddresses.ResultsScreen);
-                            _sreader.TryRead(BaseAddresses.GeneralData);
-
                             try {
+                                _sreader.TryRead(BaseAddresses.Beatmap);
+                                _sreader.TryRead(BaseAddresses.Skin);
+                                _sreader.TryRead(BaseAddresses.Player);
+                                _sreader.TryRead(BaseAddresses.ResultsScreen);
+                                _sreader.TryRead(BaseAddresses.GeneralData);
+
                                 var mods = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.MainMenu ? parseMods(BaseAddresses.GeneralData.Mods) : BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? parseMods(BaseAddresses.ResultsScreen.Mods.Value) : parseMods(BaseAddresses.Player.Mods.Value);
                                 if(socket.Connected && BaseAddresses.GeneralData.GameMode == 0) await socket.EmitAsync("osuData", new { playing = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.Playing || BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? true : false, secret = key.GetValue("secret").ToString(), setId = BaseAddresses.Beatmap.SetId, id = BaseAddresses.Beatmap.Id, name = BaseAddresses.Beatmap.MapString, md5 = BaseAddresses.Beatmap.Md5, mods = (mods.Count >= 1 ? "+"+string.Join("", mods) : ""), skin = BaseAddresses.Skin.Folder, hit50 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit50 : BaseAddresses.Player.Hit50, hit100 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit100 : BaseAddresses.Player.Hit100, hit300 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit300 : BaseAddresses.Player.Hit300, hitMiss = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.HitMiss : BaseAddresses.Player.HitMiss, maxCombo = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.MaxCombo : BaseAddresses.Player.MaxCombo, accuracy = BaseAddresses.Player.Accuracy });
-
-                                foreach(Process p in Process.GetProcesses()) {
-                                    if(p.ProcessName == "obs64" || p.ProcessName == "obs32") {
-                                        ShowWindow(p.MainWindowHandle, BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.Playing && BaseAddresses.GeneralData.ShowPlayingInterface == false && BaseAddresses.Player.IsReplay == false ? 2 : 4);
-                                    }
-                                }
-                            } catch (Exception e) {
+                            } catch (Exception) {
                                 continue;
                             }
 
-                            await Task.Delay(TimeSpan.FromSeconds(1), cts.Token);
+                            await Task.Delay(TimeSpan.FromSeconds(0.3), cts.Token);
                         }
                     } else {
                         Console.WriteLine("Failed to login due to an invalid secret or hwid. Slide into my dms (nzxl#6334) to resolve.");

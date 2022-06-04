@@ -1,0 +1,6 @@
+- Key Overlay
+- Score Farm Overlay
+- UR Overlay
+- Add Cache to Calculation (it floods /api/ endpoint for now)
+- Use oppai-ng to calculate scores instead of rian's module
+- Cleanup client code / make it more readable and stuff

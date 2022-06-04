@@ -1,9 +1,6 @@
-const [config, tmi, Banchojs, moment, NodeCache, { Client, Intents }, { MapInfo, ModUtil, Accuracy }, { MapStars, OsuPerformanceCalculator }, cron, open, url, sqlite3, httpServer, serveStatic, finalhandler, path] = requireMany("./config.json", "tmi.js", "bancho.js", "moment", "node-cache", "discord.js", "@rian8337/osu-base", "@rian8337/osu-difficulty-calculator", "cron", "open", "url", "sqlite3", "http", "serve-static", "finalhandler", "path");
+const [ config, tmi, Banchojs, moment, NodeCache, { Client, Intents }, cron, url, sqlite3, httpServer, serveStatic, finalhandler, path, { exec }, pp, fs, https ] = requireMany("./config.json", "tmi.js", "bancho.js", "moment", "node-cache", "discord.js", "cron", "url", "sqlite3", "http", "serve-static", "finalhandler", "path", "child_process", "rosu-pp", "fs", "https");
 process.env["OSU_API_KEY"] = config.credentials.osu.apiKey;
-const regEx = {
-    "beatmapLink": /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]+)/g,
-    "beatmapMods": /^\+|(EZ)|(NF)|(HT)|(SD)|(HD)|(HR)|(DT)|(FL)|(RX)|(SO)/i
-}
+
 // storing basic data like set id, name
 const beatmapCache = new NodeCache();
 // create tmi.js instance
@@ -15,7 +12,7 @@ const discord = new Client({ partials: ["CHANNEL"], intents: [ Intents.FLAGS.GUI
 // websocket
 const http = httpServer.createServer();
 const io = require("socket.io")(http);
-const serve = serveStatic(path.join(__dirname, "web"), { index: [ "index.html" ] });
+const serve = serveStatic(path.join(__dirname, "static"), { index: [ "index.html" ] });
 // restart process automatically
 new cron.CronJob('0 2 * * *', () => process.exit(1), null, true, 'UTC').start();
 // storage
@@ -24,6 +21,7 @@ const db = new sqlite3.Database("./osu-request-bot.db");
 const build = 1;
 
 (async () => {
+
     let sockets = {};
     console.log("[info] Starting up..");
 
@@ -51,7 +49,7 @@ const build = 1;
         socket.on("generateAuth", (s) => {
             console.log(`[socket] ${socket.id} requested generateAuth`);
             db.all(`SELECT hwid, verified FROM users WHERE username = \"${s.osu.toLowerCase()}\"`, (err, rows) => {
-                if(err || rows.length <= 0) return socket.emit("verify", false);
+                if(err || rows.length <= 0 || rows.length >= 1 && rows[0].verified == 1) return socket.emit("verify", false);
                 if(s.id == rows[0].hwid || rows[0].hwid == null & rows[0].verified == 0) {
                     let generated = ((Math.random() + 1).toString(36).substring(7));
                     db.run(`UPDATE users SET secret = \"${generated}\", hwid = \"${s.id}\" WHERE username = \"${s.osu.toLowerCase()}\"`, (err) => {
@@ -91,13 +89,15 @@ const build = 1;
         });
 
         socket.on("osuData", async (a) => {
+            console.log(a);
             if(beatmapCache.get(a.secret)) {
                 if(beatmapCache.get(a.secret).map != a.name || beatmapCache.get(a.secret).mods != a.mods) {
-                    beatmapCache.set(a.secret, { map: a.name, info: await calculate(a.id, a.mods, null, true), mods: a.mods });
+                    beatmapCache.set(a.secret, { map: a.name, info: await calculate(a.id, a.mods, null, a.secret, true), mods: a.mods });
                 }
             }
 
             if(sockets[a.secret] && sockets[a.secret].web) {
+                console.log("emitting to web");
                 sockets[a.secret].web.emit("data", {
                     playing: a.playing,
                     name: a.name,
@@ -111,7 +111,7 @@ const build = 1;
                     },
                     maxCombo: a.maxCombo,
                     accuracy: a.accuracy,
-                    pp: await calculate(a.id, a.mods, { hit50: a.hit50, hit100: a.hit100, hit300: a.hit300, hitMiss: a.hitMiss, maxCombo: a.maxCombo, accuracy: a.accuracy}, false),
+                    pp: await calculate(a.id, a.mods, a.accuracy),
                     img: `https://assets.ppy.sh/beatmaps/${a.setId}/covers/cover.jpg`
                 });
             }
@@ -152,7 +152,7 @@ const build = 1;
     discord.on("ready", () => {
         console.log("[info] Discord connected");
 
-        discord.on("messageCreate", message => {
+        discord.on("messageCreate", async message => {
             if(message.author.bot || !message.content.startsWith("#") || message.author.id != "710490901482307626") return;
             args = message.content.replace("#", "").split(" ");
 
@@ -182,6 +182,17 @@ const build = 1;
 
                 db.run(`DELETE FROM \"users\" WHERE username = \"${args[1].toLowerCase()}\"`);
                 message.channel.send("Removed!");
+
+                return;
+            }
+
+            if(args[0] == "calculate") {
+                if(args.length < 4) return;
+
+
+                console.log(await calculate(Number(args[1]), args[2], args[3], args[4]));
+
+                // message.channel.send();
 
                 return;
             }
@@ -224,7 +235,7 @@ const build = 1;
     
                         if(!beatmapCalc) beatmapCalc = x[0];
     
-                        calc = await calculate(beatmapCalc.id, modsText, null, true);
+                        calc = await calculate(beatmapCalc.id, modsText, null, rows[0].secret, true);
                         bancho.getUser(rows[0].username).sendMessage(`[${tags["mod"] || tags["subscriber"] || tags["badges"] && tags.badges["vip"] ? "★" : "♦"}] ${tags["username"]} » [https://osu.ppy.sh/b/${calc.map.id} ${calc.map.name}] ${modsText ? "+"+modsText : ""} | 95%: ${calc.pp[95]}pp | 98%: ${calc.pp[98]}pp | 99%: ${calc.pp[99]}pp | 100%: ${calc.pp[100]}pp | ${calc.map.length} - ★ ${calc.map.stars} - ♫ ${calc.map.objects} - AR${calc.map.ar} - OD${calc.map.od}`).then(() => {
                             twitch.say(channel, "/me Request sent!");
                         });
@@ -234,9 +245,9 @@ const build = 1;
         });
     });
 
+    await twitch.connect();
     await bancho.connect();
     await discord.login(config.credentials.discord.token);
-    await twitch.connect();
 
     http.listen(2048, () => console.log("[info] HTTP listening on Port 2048!"));
 })();
@@ -252,51 +263,66 @@ function requireMany () {
     })
 }
 
-function calculate(id, mods = null, stats = null, b) {
+function calculate(id, mods = 0, accuracy = 100, miss = 0) {
     return new Promise(async resolve => {
-        count = 0;
-        while(true) {
-            try {
-                beatmapInfo = await MapInfo.getInformation({ beatmapID: id });
-                rating = new MapStars().calculate({ map: beatmapInfo.map, mods: (mods && mods.match(regEx.beatmapMods) ? ModUtil.pcStringToMods(mods) : null) });
-                break;
-            } catch (e) {
-                if(count++ == 4) resolve();
-            }
+        let finish = false;
+
+        if(!beatmapCache.get(id)) {
+            bancho.osuApi.beatmaps.getByBeatmapId(id).then((x) => {
+                x = x[0];
+                mapPath = path.join(__dirname, "maps", `${id} ${x.artist} ${x.title} [${x.version}].osu`);
+
+                if(!fs.existsSync(mapPath)) {
+                    https.get(`https://osu.ppy.sh/osu/${id}`, (o) => o.pipe(fs.createWriteStream(mapPath)).on("finish", () => finish = true));
+                }
+
+                beatmapCache.set(id, {
+                    artist: x.artist,
+                    title: x.title,
+                    version: x.version,
+                    length: x.totalLength,
+                    path: mapPath,
+                    downloaded: fs.existsSync(mapPath)
+                });
+
+                if(beatmapCache.get(id).downloaded) finish = true;
+            });
+        } else finish = true;
+
+        while (!finish) {
+            await new Promise(p => setTimeout(p, 1000));
         }
 
-        if(b) {
-            resolve({
-                "map": {
-                    "name": `${beatmapInfo.artist} - ${beatmapInfo.title} [${beatmapInfo.version}]`,
-                    "id": beatmapInfo.beatmapID,
-                    "setId": beatmapInfo.beatmapsetID,
-                    "stars": Math.round(rating.pcStars.total * 100) / 100,
-                    "ar": Math.round(rating.pcStars.stats.ar * 100) / 100,
-                    "od": Math.round(rating.pcStars.stats.od * 100) / 100,
-                    "length": mods && mods.match(/DT|NC/) ? moment.utc((beatmapInfo.totalLength*0.67)*1000).format("mm:ss") : moment.utc(beatmapInfo.totalLength*1000).format("mm:ss"),
-                    "objects": beatmapInfo.circles+beatmapInfo.sliders+beatmapInfo.spinners
-                },
-                "pp": {
-                    "95": Math.round(new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 95 }).total),
-                    "98": Math.round(new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 98 }).total),
-                    "99": Math.round(new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 99 }).total),
-                    "100": Math.round(new OsuPerformanceCalculator().calculate({ stars: rating.pcStars, accPercent: 100 }).total)
+        calculatedMap = await pp.calculate({
+            path: beatmapCache.get(id).path,
+            params: [
+                {
+                    mods: Number(mods),
+                    acc: Number(accuracy),
+                    nMisses: Number(miss),
                 }
-            });
-        } else {
-            resolve(Math.round(new OsuPerformanceCalculator().calculate({
-                "stars": rating.pcStars,
-                "combo": stats.maxCombo,
-                "accPercent": new Accuracy({
-                    "nmiss": stats.hitMiss,
-                    "n300": stats.hit300,
-                    "n100": stats.hit100,
-                    "n50": stats.hit50,
-                    "percent": stats.accuracy,
-                    "nobjects": beatmapInfo.objects
-                })
-            }).total));
-        }
+            ]
+        })[0];
+
+        resolve({
+            id: id,
+            artist: beatmapCache.get(id).artist,
+            title: beatmapCache.get(id).title,
+            version: beatmapCache.get(id).version,
+            stats: {
+                ar: calculatedMap.ar,
+                od: calculatedMap.od,
+                cs: calculatedMap.cs,
+                hp: calculatedMap.hp,
+                stars: calculatedMap.stars,
+                objects: calculatedMap.nCircles+calculatedMap.nSliders+calculatedMap.nSpinners,
+                length: beatmapCache.get(id).length,
+                maxCombo: calculatedMap.maxCombo
+            },
+            accuracy: Number(accuracy),
+            misses: Number(miss),
+            pp: calculatedMap.pp,
+            mods: Number(mods)
+        });
     });
 }
