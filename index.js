@@ -88,31 +88,33 @@ const build = 1;
             }
         });
 
-        socket.on("osuData", async (a) => {
-            console.log(a);
-            if(beatmapCache.get(a.secret)) {
-                if(beatmapCache.get(a.secret).map != a.name || beatmapCache.get(a.secret).mods != a.mods) {
-                    beatmapCache.set(a.secret, { map: a.name, info: await calculate(a.id, a.mods, null, a.secret, true), mods: a.mods });
-                }
-            }
-
-            if(sockets[a.secret] && sockets[a.secret].web) {
-                console.log("emitting to web");
-                sockets[a.secret].web.emit("data", {
-                    playing: a.playing,
-                    name: a.name,
-                    id: a.id,
-                    mods: a.mods,
+        socket.on("clientData", async a => {
+            clientSocket = sockets[a.secretId];
+            if(clientSocket && clientSocket.web) {
+                calculatedMap = await calculate(a.Beatmap.id, a.Player.mods.value, {
+                    n50: a.Stats.n50,
+                    n100: a.Stats.n100,
+                    n300: a.Stats.n300,
+                    nMisses: a.Stats.nMisses,
+                    passedObjects: a.Stats.passedObjects,
+                    combo: a.Stats.combo,
+                    accuracy: a.Stats.accuracy
+                });
+                clientSocket.web.emit("data", {
+                    playing: a.Player.playing,
+                    name: a.Beatmap.name,
+                    id: a.Beatmap.id,
+                    mods: a.Player.mods.text,
                     hits: {
-                        50: a.hit50,
-                        100: a.hit100,
-                        300: a.hit300,
-                        miss: a.hitMiss
+                        50: a.Stats.n50,
+                        100: a.Stats.n100,
+                        300: a.Stats.n300,
+                        miss: a.Stats.nMisses,
                     },
-                    maxCombo: a.maxCombo,
-                    accuracy: a.accuracy,
-                    pp: await calculate(a.id, a.mods, a.accuracy),
-                    img: `https://assets.ppy.sh/beatmaps/${a.setId}/covers/cover.jpg`
+                    maxCombo: a.Stats.combo,
+                    accuracy: a.Stats.accuracy,
+                    pp: calculatedMap.pp,
+                    img: `https://assets.ppy.sh/beatmaps/${a.Beatmap.setId}/covers/cover.jpg`
                 });
             }
         });
@@ -263,17 +265,28 @@ function requireMany () {
     })
 }
 
-function calculate(id, mods = 0, accuracy = 100, miss = 0) {
+function calculate(id, mods = 0, obj = {}) {
     return new Promise(async resolve => {
         let finish = false;
 
         if(!beatmapCache.get(id)) {
-            bancho.osuApi.beatmaps.getByBeatmapId(id).then((x) => {
+            bancho.osuApi.beatmaps.getByBeatmapId(id).then(async (x) => {
                 x = x[0];
-                mapPath = path.join(__dirname, "maps", `${id} ${x.artist} ${x.title} [${x.version}].osu`);
+                downloading = false, mapPath = path.join(__dirname, "maps", `${x.id}.osu`);
 
                 if(!fs.existsSync(mapPath)) {
-                    https.get(`https://osu.ppy.sh/osu/${id}`, (o) => o.pipe(fs.createWriteStream(mapPath)).on("finish", () => finish = true));
+                    downloading = true, file = fs.createWriteStream(mapPath);
+                    https.get(`https://osu.ppy.sh/osu/${x.id}`, (o) => {
+                        o.pipe(file);
+                        file.on("finish", () => {
+                            file.close();
+                            downloading = false;
+                        });
+                    });
+                }
+
+                while (downloading) {
+                    await new Promise(p => setTimeout(p, 1000));
                 }
 
                 beatmapCache.set(id, {
@@ -297,9 +310,14 @@ function calculate(id, mods = 0, accuracy = 100, miss = 0) {
             path: beatmapCache.get(id).path,
             params: [
                 {
-                    mods: Number(mods),
-                    acc: Number(accuracy),
-                    nMisses: Number(miss),
+                    mods: mods,
+                    acc: obj.accuracy,
+                    n300: obj.n300,
+                    n100: obj.n100,
+                    n50: obj.n50,
+                    nMisses: obj.nMisses,
+                    combo: obj.combo,
+                    passedObjects: obj.passedObjects,
                 }
             ]
         })[0];
@@ -310,19 +328,19 @@ function calculate(id, mods = 0, accuracy = 100, miss = 0) {
             title: beatmapCache.get(id).title,
             version: beatmapCache.get(id).version,
             stats: {
-                ar: calculatedMap.ar,
-                od: calculatedMap.od,
-                cs: calculatedMap.cs,
-                hp: calculatedMap.hp,
-                stars: calculatedMap.stars,
+                ar: Math.round(calculatedMap.ar * 100) / 100,
+                od: Math.round(calculatedMap.od * 100) / 100,
+                cs: Math.round(calculatedMap.cs * 100) / 100,
+                hp: Math.round(calculatedMap.hp * 100) / 100,
+                stars: Math.round(calculatedMap.stars * 100) / 100,
                 objects: calculatedMap.nCircles+calculatedMap.nSliders+calculatedMap.nSpinners,
                 length: beatmapCache.get(id).length,
                 maxCombo: calculatedMap.maxCombo
             },
-            accuracy: Number(accuracy),
-            misses: Number(miss),
-            pp: calculatedMap.pp,
-            mods: Number(mods)
+            accuracy: obj.accuracy,
+            misses: obj.nMisses,
+            pp: Math.round(calculatedMap.pp),
+            mods: mods
         });
     });
 }
