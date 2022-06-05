@@ -4,6 +4,7 @@ package-lock.json
 # config
 config.json
 osu-request-bot.db
+maps/*
 # build stuff
 client/bin
 client/obj

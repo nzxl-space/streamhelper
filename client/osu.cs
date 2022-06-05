@@ -28,6 +28,7 @@ namespace client
                         var mods = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.MainMenu ? BaseAddresses.GeneralData.Mods : BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Mods.Value : BaseAddresses.Player.Mods.Value;
                         var parsedMods = parseMods(mods);
 
+
                         if(Client.socket.Connected) {
                             await Client.socket.EmitAsync("clientData", new {
                                 secretId = Client.key.GetValue("secret").ToString(),
@@ -45,7 +46,7 @@ namespace client
                                     }
                                 },
                                 Stats = new {
-                                    accuracy = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? 0 : BaseAddresses.Player.Accuracy,
+                                    accuracy = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? 100 : BaseAddresses.Player.Accuracy,
                                     n300 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit300 : BaseAddresses.Player.Hit300,
                                     n100 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit100 : BaseAddresses.Player.Hit100,
                                     n50 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit50 : BaseAddresses.Player.Hit50,

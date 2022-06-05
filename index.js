@@ -209,19 +209,22 @@ const build = 1;
             db.all(`SELECT username, secret FROM users WHERE twitch = \"${channel.replace(/\#/, "").toLowerCase()}\"`, (err, rows) => {
                 if(err || rows.length <= 0) return;
                 if(message[0] == "!np" || message[0] == "!nppp" || message[0] == "!pp") {
-                    if(beatmapCache.get(rows[0].secret)) {
-                        cache = beatmapCache.get(rows[0].secret);
-                        twitch.say(channel, `» ${cache.map} ${cache.mods ? cache.mods : ""} - https://osu.ppy.sh/b/${cache.info.map.id} | 95%: ${cache.info.pp[95]}pp | 98%: ${cache.info.pp[98]}pp | 99%: ${cache.info.pp[99]}pp | 100%: ${cache.info.pp[100]}pp | ${cache.info.map.length} - ★ ${cache.info.map.stars} - ♫ ${cache.info.map.objects} - AR${cache.info.map.ar} - OD${cache.info.map.od}`);
-                    }
+                    // if(beatmapCache.get(rows[0].secret)) {
+                    //     cache = beatmapCache.get(rows[0].secret);
+                    //     twitch.say(channel, `» ${cache.map} ${cache.mods ? cache.mods : ""} - https://osu.ppy.sh/b/${cache.info.map.id} | 95%: ${cache.info.pp[95]}pp | 98%: ${cache.info.pp[98]}pp | 99%: ${cache.info.pp[99]}pp | 100%: ${cache.info.pp[100]}pp | ${cache.info.map.length} - ★ ${cache.info.map.stars} - ♫ ${cache.info.map.objects} - AR${cache.info.map.ar} - OD${cache.info.map.od}`);
+                    // }
                     return;
                 }
 
-                let beatmapId, setId, modsText, beatmapCalc;
+                let beatmapId, setId, mods, beatmapCalc;
+                beatmapLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]+)/g;
+                beatmapMods = /^\+|(EZ)|(NF)|(HT)|(SD)|(HD)|(HR)|(DT)|(FL)|(RX)|(SO)/;
+
                 message.forEach(msg => {
-                    if(msg.match(regEx.beatmapLink) && msg.match(regEx.beatmapLink)[0] == "https://osu.ppy.sh/beatmapsets/") {
-                        beatmapId = msg.match(regEx.beatmapLink)[1], setId = msg.match(regEx.beatmapLink)[2];
-                    } else if(msg.match(regEx.beatmapMods)) {
-                        modsText = msg.replace(/^\+/, "").toUpperCase();
+                    if(msg.match(beatmapLink) && msg.match(beatmapLink)[0] == "https://osu.ppy.sh/beatmapsets/") {
+                        beatmapId = msg.match(beatmapLink)[1], setId = msg.match(beatmapLink)[2];
+                    } else if(msg.match(beatmapMods)) {
+                        mods = msg.replace(/^\+/, "").toUpperCase();
                     }
                 });
 
@@ -236,9 +239,18 @@ const build = 1;
                         }
     
                         if(!beatmapCalc) beatmapCalc = x[0];
-    
-                        calc = await calculate(beatmapCalc.id, modsText, null, rows[0].secret, true);
-                        bancho.getUser(rows[0].username).sendMessage(`[${tags["mod"] || tags["subscriber"] || tags["badges"] && tags.badges["vip"] ? "★" : "♦"}] ${tags["username"]} » [https://osu.ppy.sh/b/${calc.map.id} ${calc.map.name}] ${modsText ? "+"+modsText : ""} | 95%: ${calc.pp[95]}pp | 98%: ${calc.pp[98]}pp | 99%: ${calc.pp[99]}pp | 100%: ${calc.pp[100]}pp | ${calc.map.length} - ★ ${calc.map.stars} - ♫ ${calc.map.objects} - AR${calc.map.ar} - OD${calc.map.od}`).then(() => {
+
+                        calculatedMap = await calculate(beatmapCalc.id, parseMods(mods), {
+                            n50: 0,
+                            n100: 0,
+                            n300: 0,
+                            nMisses: 0,
+                            passedObjects: (beatmapCalc.countNormal+beatmapCalc.countSlider+beatmapCalc.countSpinner),
+                            combo: beatmapCalc.maxCombo,
+                            accuracy: 100
+                        });
+
+                        bancho.getUser(rows[0].username).sendMessage(`[${tags["mod"] || tags["subscriber"] || tags["badges"] && tags.badges["vip"] ? "★" : "♦"}] ${tags["username"]} » [https://osu.ppy.sh/b/${calculatedMap.id} ${calculatedMap.artist} - ${calculatedMap.title} [${calculatedMap.version}]] ${mods ? "+"+mods : ""} | 95%: ${calculatedMap.fcPP.n95}pp | 98%: ${calculatedMap.fcPP.n98}pp | 99%: ${calculatedMap.fcPP.n99}pp | 100%: ${calculatedMap.fcPP.n100}pp | ${calculatedMap.stats.length} - ★ ${calculatedMap.stats.stars} - ♫ ${calculatedMap.stats.objects} - AR${calculatedMap.stats.ar} - OD${calculatedMap.stats.od}`).then(() => {
                             twitch.say(channel, "/me Request sent!");
                         });
                     });
@@ -263,6 +275,25 @@ function requireMany () {
             return console.log(event)
         }
     })
+}
+
+function parseMods(mods) {
+    let bit = 0;
+
+    if(mods.match(/NF/)) bit += 1;
+    if(mods.match(/EZ/)) bit += 2;
+    if(mods.match(/HD/)) bit += 8;
+    if(mods.match(/HR/)) bit += 16;
+    if(mods.match(/SD/)) bit += 32;
+    else if(mods.match(/PF/)) bit += 16384;
+    if(mods.match(/NC/)) bit += 512;
+    else if(mods.match(/DT/)) bit += 64;
+    if(mods.match(/RX/)) bit += 128;
+    if(mods.match(/HT/)) bit += 256;
+    if(mods.match(/FL/)) bit += 1024;
+    if(mods.match(/SO/)) bit += 4096;
+
+    return bit;
 }
 
 function calculate(id, mods = 0, obj = {}) {
@@ -318,9 +349,25 @@ function calculate(id, mods = 0, obj = {}) {
                     nMisses: obj.nMisses,
                     combo: obj.combo,
                     passedObjects: obj.passedObjects,
+                },
+                {
+                    mods: mods,
+                    acc: 95
+                },
+                {
+                    mods: mods,
+                    acc: 98
+                },
+                {
+                    mods: mods,
+                    acc: 99
+                },
+                {
+                    mods: mods,
+                    acc: 100
                 }
             ]
-        })[0];
+        });
 
         resolve({
             id: id,
@@ -328,18 +375,24 @@ function calculate(id, mods = 0, obj = {}) {
             title: beatmapCache.get(id).title,
             version: beatmapCache.get(id).version,
             stats: {
-                ar: Math.round(calculatedMap.ar * 100) / 100,
-                od: Math.round(calculatedMap.od * 100) / 100,
-                cs: Math.round(calculatedMap.cs * 100) / 100,
-                hp: Math.round(calculatedMap.hp * 100) / 100,
-                stars: Math.round(calculatedMap.stars * 100) / 100,
-                objects: calculatedMap.nCircles+calculatedMap.nSliders+calculatedMap.nSpinners,
-                length: beatmapCache.get(id).length,
-                maxCombo: calculatedMap.maxCombo
+                ar: Math.round(calculatedMap[0].ar * 100) / 100,
+                od: Math.round(calculatedMap[0].od * 100) / 100,
+                cs: Math.round(calculatedMap[0].cs * 100) / 100,
+                hp: Math.round(calculatedMap[0].hp * 100) / 100,
+                stars: Math.round(calculatedMap[0].stars * 100) / 100,
+                objects: calculatedMap[0].nCircles+calculatedMap[0].nSliders+calculatedMap[0].nSpinners,
+                length: moment(Math.floor(beatmapCache.get(id).length) * 1000).format("mm:ss"),
+                maxCombo: calculatedMap[0].maxCombo
             },
             accuracy: obj.accuracy,
             misses: obj.nMisses,
-            pp: Math.round(calculatedMap.pp),
+            pp: Math.round(calculatedMap[0].pp),
+            fcPP: {
+                n95: Math.round(calculatedMap[1].pp),
+                n98: Math.round(calculatedMap[2].pp),
+                n99: Math.round(calculatedMap[3].pp),
+                n100: Math.round(calculatedMap[4].pp),
+            },
             mods: mods
         });
     });
