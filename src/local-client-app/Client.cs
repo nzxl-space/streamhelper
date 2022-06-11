@@ -32,7 +32,7 @@ namespace client
 
             if(socket.Connected) {
                 Console.Clear();
-                Console.WriteLine("Connected to {0}..", url);
+                Console.WriteLine("Connected to {0}", url);
                 socket.OnDisconnected += skillIssue;
             }
 

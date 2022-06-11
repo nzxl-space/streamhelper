@@ -1,28 +1,27 @@
 {
-  "name": "beatmap-request",
-  "version": "1.0.0",
+  "name": "KIYOMII-OSU-SERVICE",
+  "version": "0.1",
   "description": "",
-  "main": "index.js",
-  "private": true,
+  "main": "src/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "NZXL/kiyomii",
   "license": "ISC",
-  "gypfile": true,
   "dependencies": {
     "bancho.js": "^0.9.7",
-    "cron": "^1.8.2",
     "discord.js": "^13.6.0",
-    "finalhandler": "^1.2.0",
+    "dotenv": "^16.0.1",
+    "express": "^4.18.1",
+    "log-prefix": "^0.1.1",
     "moment": "^2.29.3",
-    "node-cache": "^5.1.2",
     "path": "^0.12.7",
     "rosu-pp": "^0.5.3",
-    "sequential-task-queue": "^1.2.1",
-    "serve-static": "^1.15.0",
     "socket.io": "^4.5.0",
     "sqlite3": "^5.0.8",
     "tmi.js": "^1.8.5"
+  },
+  "devDependencies": {
+    "eslint": "^8.17.0"
   }
 }

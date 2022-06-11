@@ -38,6 +38,7 @@ namespace client
         public static bool checkVersion(String url, int b) {
             try {
                 HttpWebRequest webRequest = (HttpWebRequest) WebRequest.Create(url+"/b");
+                webRequest.Timeout = 30000;
                 HttpWebResponse httpResponse = (HttpWebResponse) webRequest.GetResponse();
                 using (StreamReader responseReader = new StreamReader(httpResponse.GetResponseStream()))
                 {

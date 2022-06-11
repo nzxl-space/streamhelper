@@ -2,12 +2,11 @@
 node_modules/
 package-lock.json
 # config
-config.json
-osu-request-bot.db
+.env
+storage.db
 maps/*
 # build stuff
-client/bin
-client/obj
-build/
+src/local-client-app/bin
+src/local-client-app/obj
 # vs settings
 .vscode

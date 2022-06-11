@@ -5,3 +5,7 @@
 - Cleanup client code / make it more readable and stuff
 - Fix crash when map not exist
 - Fix !np command
+- Add cache to twitch bot
+- Add o!rdr support ? ?
+- Spectate bot / retrieve replay / check currently playing map with osu! api
+- Discord bot to check currently playing
