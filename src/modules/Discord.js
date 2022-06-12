@@ -11,17 +11,26 @@ module.exports = class Discord {
             deps.discordClient.user.setPresence({ status: "dnd" });
 
             setInterval(() => {
-                deps.database.all("SELECT discord FROM users", (err, rows) => {
+                deps.database.all("SELECT discord, secret FROM users", (err, rows) => {
                     if(err || rows.length <= 0) return;  
 
                     rows.forEach(user => {
-                        deps.discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.filter(x => x.id == user.discord).map(x => {
+                        if(deps.sockets[user.secret]) return;
+                        deps.discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.filter(x => x.id == user.discord).map(async x => {
                             let activity = x.presence.activities;
                             if(activity.length <= 0) return;
 
                             let currentlyPlaying = activity.filter(x => x.name == "osu!" && x.type == "PLAYING" && x.details);
                             if(currentlyPlaying.length >= 1) {
-                                // console.log(currentlyPlaying[0].details);
+                                let currentData = await deps.Bancho.getData(user.secret);
+                                if(currentData.Beatmap.name != currentlyPlaying[0].details) {
+                                    let mapData = await deps.Bancho.lookupBeatmap(currentlyPlaying[0].details);
+                                    deps.Bancho.editData("setId", mapData.beatmapset_id, user.secret);
+                                    deps.Bancho.editData("id", mapData.id, user.secret);
+                                    deps.Bancho.editData("name", currentlyPlaying[0].details, user.secret);
+
+                                    console.log(await deps.Bancho.getData(user.secret));
+                                }
                             }
                         });
                     });

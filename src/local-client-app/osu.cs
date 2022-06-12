@@ -28,9 +28,8 @@ namespace client
                         var mods = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.MainMenu ? BaseAddresses.GeneralData.Mods : BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Mods.Value : BaseAddresses.Player.Mods.Value;
                         var parsedMods = parseMods(mods);
 
-
                         if(Client.socket.Connected) {
-                            await Client.socket.EmitAsync("clientData", new {
+                            await Client.socket.EmitAsync("CLIENT", new {
                                 secretId = Client.key.GetValue("secret").ToString(),
                                 Beatmap = new {
                                     setId = BaseAddresses.Beatmap.SetId,
@@ -59,7 +58,7 @@ namespace client
                     }
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(1));
+                await Task.Delay(TimeSpan.FromSeconds(0.25));
             }   
         }
 

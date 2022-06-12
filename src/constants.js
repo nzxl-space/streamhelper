@@ -37,6 +37,7 @@ const discordClient = new Client({
 const sqlite3 = require("sqlite3");
 const database = new sqlite3.Database("./storage.db");
 const sockets = {};
+const osu = {};
 
 // Websocket
 const express = require("express");
@@ -45,6 +46,9 @@ const { Server } = require("socket.io");
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer);
+
+// Updater
+const versionString = 1;
 
 module.exports = {
     moment: moment,
@@ -62,5 +66,7 @@ module.exports = {
     httpServer: httpServer,
     io: io,
     axios: axios,
-    Regex: Regex
+    Regex: Regex,
+    build: versionString,
+    osu: osu
 };

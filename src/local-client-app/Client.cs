@@ -4,6 +4,7 @@ using Microsoft.Win32;
 using System.Threading;
 using System.Linq;
 using System;
+using Newtonsoft.Json.Linq;
 
 namespace client
 {
@@ -38,38 +39,31 @@ namespace client
 
             key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\kiyomii");
             if(key == null) {
-                string username;
                 Console.WriteLine("Please enter your osu! username: ");
-                username = Console.ReadLine();
+                socket.EmitAsync("REGISTER", new { osu = Console.ReadLine(), id = Utils.GetMachineGuid() });
+            } else socket.EmitAsync("LOGIN", new { osu = key.GetValue("username").ToString(), secret = key.GetValue("secret").ToString() });
 
-                socket.EmitAsync("generateAuth", new { osu = username, id = Utils.GetMachineGuid() });
-                socket.On("verify", x => {
-                    if(x.GetValue<Boolean>(0) != false) {
-                        Console.WriteLine("Please verify your identity by sending `!verify {0}` to kiyomii in osu!.", x.GetValue<String>(1));
-                        socket.On("success", n => {
-                            RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\kiyomii");
-                            key.SetValue("username", n.GetValue<String>(0));
-                            key.SetValue("secret", n.GetValue<String>(1));
+            socket.On("REGISTERED", response => {
+                JObject data = JObject.Parse(response.GetValue().ToString());
+                if((bool) data["success"] == true) Console.WriteLine("Please verify your identity by sending `!verify {0}` to kiyomii in osu!.", data["secret"]);
+                else Console.WriteLine("It seems like your account is not enabled yet. Slide into my dms (nzxl#6334) to resolve.");
+            });
 
-                            Utils.restartApp(args, cts);
-                        });
-                    } else {
-                        Console.WriteLine("It seems like your account is not enabled yet. Slide into my dms (nzxl#6334) to resolve.");
-                        return;
-                    }
-                });
-            } else {
-                socket.EmitAsync("auth", new { osu = key.GetValue("username").ToString(), secret = key.GetValue("secret").ToString() });
-                socket.On("loggedIn", u => {
-                    if(u.GetValue<Boolean>(0) != false) {
-                        Console.WriteLine("Logged in as {0}!", u.GetValue<String>(1));
-                        osu.read(cts, args.FirstOrDefault());
-                    } else {
-                        Console.WriteLine("Failed to login due to an invalid secret or hwid. Slide into my dms (nzxl#6334) to resolve.");
-                        return;
-                    }
-                });
-            }
+            socket.On("VERIFIED", response => {
+                JObject data = JObject.Parse(response.GetValue().ToString());
+                RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\kiyomii");
+                key.SetValue("username", data["username"]);
+                key.SetValue("secret", data["secret"]);
+                Utils.restartApp(args, cts);
+            });
+
+            socket.On("LOGGEDIN", response => {
+                JObject data = JObject.Parse(response.GetValue().ToString());
+                if((bool) data["success"] == true) {
+                    Console.WriteLine("Logged in as {0}!", key.GetValue("username").ToString());
+                    osu.read(cts, args.FirstOrDefault());
+                } else Console.WriteLine("Failed to login due to an invalid secret or hwid. Slide into my dms (nzxl#6334) to resolve.");
+            });
 
             while(!_quitFlag) {
                 var keyInfo = Console.ReadKey(true);

@@ -34,7 +34,7 @@ module.exports = class Bancho {
                 if(args.length <= 0) return;
                 console.log(`New verify request from >${data.user.ircUsername}<`);
 
-                deps.database.all(`SELECT FROM users WHERE username = \"${data.user.ircUsername}\" AND secret = \"${args[0]}\"`, (err, rows) => {
+                deps.database.all(`SELECT verified, username, secret FROM users WHERE username = \"${data.user.ircUsername}\" AND secret = \"${args[0]}\"`, (err, rows) => {
                     if(err || rows.length == 0 || rows.length >= 1 & rows[0].verified == 1) {
                         return console.log(`Verification for user >${data.user.ircUsername}< failed!`);
                     }
@@ -47,6 +47,8 @@ module.exports = class Bancho {
                         if(deps.sockets[args[0]]) {
                             deps.sockets[args[0]].emit("VERIFIED", {
                                 success: true,
+                                username: rows[0].username,
+                                secret: rows[0].secret,
                                 error: "Successfully verified identity"
                             });
                         }
@@ -133,6 +135,74 @@ module.exports = class Bancho {
             }
 
             resolve(bit);
+        });
+    }
+
+    lookupBeatmap(beatmapName) {
+        return new Promise(resolve => {
+            deps.axios({
+                method: "GET", 
+                url: `https://osu.ppy.sh/api/v2/beatmapsets/search?m=0&q=${beatmapName}&s=any`,
+                headers: {
+                    "Authorization": `Bearer ${deps.accessToken}`,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                }
+            }).then(response => {
+                for (let i in response.data.beatmapsets) {
+                    let map = response.data.beatmapsets[i];
+                    if(map.artist.match(/\w+.\w+/) && map.artist.match(/\w+.\w+/)[0] == beatmapName.match(/\w+.\w+/)[0]) {
+                        let foundMap = map.beatmaps.find(o => o.version == beatmapName.match(/(?!.*\[)(?<=\[).+?(?=\])/)[0]);
+                        if(foundMap) {
+                            resolve(foundMap);
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    editData(key, value, secretId) {
+        return new Promise(resolve => {
+            let object = deps.osu[secretId];
+            if(object) {
+                for(let k in object) {
+                    if(object[k].hasOwnProperty(key)) {
+                        object[k][key] = value;
+                        resolve();
+                    }
+                }
+            }
+        });
+    }
+
+    getData(secretId) {
+        return new Promise(resolve => {
+            if(!deps.osu[secretId]) {
+                deps.osu[secretId] = {
+                    Beatmap: {
+                      setId: 0,
+                      id: 0,
+                      name: ""
+                    },
+                    Player: {
+                      playing: false,
+                      skin: '',
+                      mods: { text: '', value: 0 }
+                    },
+                    Stats: {
+                      accuracy: 0,
+                      n300: 0,
+                      n100: 0,
+                      n50: 0,
+                      nMisses: 0,
+                      combo: 0,
+                      passedObjects: 0
+                    }
+                }
+            }
+
+            resolve(deps.osu[secretId]);
         });
     }
 }
