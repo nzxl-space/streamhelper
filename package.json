@@ -17,6 +17,7 @@
     "log-prefix": "^0.1.1",
     "moment": "^2.29.3",
     "path": "^0.12.7",
+    "robotjs": "^0.6.0",
     "rosu-pp": "^0.5.3",
     "socket.io": "^4.5.0",
     "sqlite3": "^5.0.8",

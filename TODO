@@ -2,8 +2,8 @@
 - Score Farm Overlay
 - UR Overlay
 - PP Overlay
-- Add Calculation
-- Add Twitch request bot with !np
+- Add PP Calculation
+- Twitch request bot - add more info to request and !np command
 - Add o!rdr support ? ?
 - Spectate bot / retrieve replay / check currently playing map with osu! api
 - Discord bot to check currently playing - needs id now, maybe create func to search map by name

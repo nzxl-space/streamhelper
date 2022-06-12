@@ -34,9 +34,11 @@ module.exports = class Twitch {
                 deps.banchoClient.osuApi.beatmaps.getBySetId(beatmapId).then(map => {
                     if(map.length <= 0) return;
 
-                    deps.database.all(`SELECT username FROM users WHERE twitch = \"${channel.replace(/#/, "")}\"`, (err, rows) => {
+                    deps.database.all(`SELECT username FROM users WHERE twitch = \"${channel.replace(/#/, "")}\"`, async (err, rows) => {
                         if(err || rows.length <= 0) return;
                         deps.banchoClient.getUser(rows[0].username).sendMessage(`https://osu.ppy.sh/b/${map[0].beatmapId} ${mods}`);
+
+                        console.log(await deps.Bancho.calculate(map[0].beatmapId, mods));
                     });
                 });
             }
