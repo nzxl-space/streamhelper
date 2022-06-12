@@ -28,53 +28,10 @@ require("log-prefix")(() => { return `[${deps.moment(Date.now()).format("HH:mm:s
         
         module["WebSocket"].createServer();
         module["Bancho"].createBancho();
+        module["Discord"].createDiscord();
     });
 
     return;
-
-    discord.on("ready", () => {
-        console.log("[info] Discord connected");
-
-        discord.on("messageCreate", async message => {
-            if(message.author.bot || !message.content.startsWith("#") || message.author.id != "710490901482307626") return;
-            args = message.content.replace("#", "").split(" ");
-
-            if(args[0] == "add") {
-                if(args.length < 4) return;
-
-                db.run(`INSERT INTO \"users\" (\"username\", \"twitch\", \"discord\") VALUES (\"${args[1].toLowerCase()}\", \"${args[2].toLowerCase()}\", \"${Number(args[3])}\")`);
-                message.channel.send("Added!");
-
-                return;
-            }
-
-            if(args[0] == "list") {
-                db.all(`SELECT username FROM users`, (err, rows) => {
-                    if(err || rows.length <= 0) return;
-
-                    users = [];
-                    rows.filter(x => users.push(x.username));
-
-                    message.channel.send(`List: ${users.join(", ")}`);
-                });
-                return;
-            }
-
-            if(args[0] == "remove") {
-                if(args.length < 2) return;
-
-                db.run(`DELETE FROM \"users\" WHERE username = \"${args[1].toLowerCase()}\"`);
-                message.channel.send("Removed!");
-
-                return;
-            }
-
-            if(args[0] == "calculate") {
-                if(args.length < 4) return;
-                return;
-            }
-        });
-    });
 
     twitch.on("connected", () => {
         console.log("[info] Twitch connected");

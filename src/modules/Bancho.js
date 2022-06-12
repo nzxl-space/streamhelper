@@ -2,6 +2,20 @@ const deps = require("../constants.js");
 
 module.exports = class Bancho {
     createBancho() {
+        deps.axios({
+            method: "POST",
+            url: "https://osu.ppy.sh/oauth/token",
+            data: {
+                client_id: process.env.OSU_CLIENt_ID,
+                client_secret: process.env.OSU_CLIENT_SECRET,
+                grant_type: "client_credentials",
+                scope: "public"
+            },
+            headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json"
+            }
+        }).then(result => deps.accessToken = result.data.access_token);
 
         deps.banchoClient.on("connected", () => {
             console.log("Bancho connected!");

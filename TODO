@@ -1,11 +1,11 @@
 - Key Overlay
 - Score Farm Overlay
 - UR Overlay
-- Add Cache to Calculation (it floods /api/ endpoint for now)
-- Cleanup client code / make it more readable and stuff
-- Fix crash when map not exist
-- Fix !np command
-- Add cache to twitch bot
+- PP Overlay
+- Add Calculation
+- Add Twitch request bot with !np
 - Add o!rdr support ? ?
 - Spectate bot / retrieve replay / check currently playing map with osu! api
-- Discord bot to check currently playing
+- Discord bot to check currently playing - needs id now, maybe create func to search map by name
+- Rewrite local-client-app code because it sucks right now.
+- Create web page with osu! login with user settings for basically everything (custom overlays, check current status of bot, etc.)

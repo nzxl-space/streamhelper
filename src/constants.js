@@ -3,6 +3,10 @@ const moment = require("moment");
 const path = require("path");
 const fs = require("fs");
 const https = require("https");
+const axios = require("axios");
+const Regex = {
+
+};
 
 // Twitch
 const tmi = require("tmi.js");
@@ -25,15 +29,7 @@ const pp = require("rosu-pp");
 // Discord
 const { Client, Intents } = require("discord.js");
 const discordClient = new Client({
-    partials: ["CHANNEL"],
-    intents: [ 
-        Intents.FLAGS.GUILDS, 
-        Intents.FLAGS.GUILD_PRESENCES, 
-        Intents.FLAGS.GUILD_MEMBERS, 
-        Intents.FLAGS.GUILD_MESSAGES, 
-        Intents.FLAGS.GUILD_WEBHOOKS, 
-        Intents.FLAGS.DIRECT_MESSAGES 
-    ]
+    intents: [ Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_PRESENCES ]
 });
 
 // Storage
@@ -49,7 +45,7 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer);
 
-module.exports = Object.freeze({
+module.exports = {
     moment: moment,
     path: path,
     fs: fs,
@@ -63,5 +59,7 @@ module.exports = Object.freeze({
     database: database,
     app: app,
     httpServer: httpServer,
-    io: io
-});
+    io: io,
+    axios: axios,
+    Regex: Regex
+};
