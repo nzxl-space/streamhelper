@@ -15,7 +15,10 @@ module.exports = class Bancho {
                 Accept: "application/json",
                 "Content-Type": "application/json"
             }
-        }).then(result => deps.accessToken = result.data.access_token);
+        }).then(result => {
+            deps.accessToken = result.data.access_token;
+            console.log("Access Token set!");
+        });
 
         deps.banchoClient.on("connected", () => {
             console.log("Bancho connected!");

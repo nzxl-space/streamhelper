@@ -29,76 +29,8 @@ require("log-prefix")(() => { return `[${deps.moment(Date.now()).format("HH:mm:s
         module["WebSocket"].createServer();
         module["Bancho"].createBancho();
         module["Discord"].createDiscord();
+        module["Twitch"].createTwitch();
     });
-
-    return;
-
-    twitch.on("connected", () => {
-        console.log("[info] Twitch connected");
-        twitch.on("message", (channel, tags, message, self) => {
-            message = message.split(" ");
-
-            db.all(`SELECT username, secret FROM users WHERE twitch = \"${channel.replace(/\#/, "").toLowerCase()}\"`, (err, rows) => {
-                if(err || rows.length <= 0) return;
-                if(message[0] == "!np" || message[0] == "!nppp" || message[0] == "!pp") {
-                    if(currentlyPlaying.get(`${rows[0].secret}`)) {
-                        twitch.say(channel, currentlyPlaying.get(`${rows[0].secret}`));
-                    }
-                    return;
-                }
-
-                let beatmapId, setId, mods, beatmapCalc;
-                beatmapLink = /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]+)/g;
-                beatmapMods = /^\+|(EZ)|(NF)|(HT)|(SD)|(HD)|(HR)|(DT)|(FL)|(RX)|(SO)/;
-
-                message.forEach(msg => {
-                    if(msg.match(beatmapLink) && msg.match(beatmapLink)[0] == "https://osu.ppy.sh/beatmapsets/") {
-                        beatmapId = msg.match(beatmapLink)[1], setId = msg.match(beatmapLink)[2];
-                    } else if(msg.match(beatmapMods)) {
-                        mods = msg.replace(/^\+/, "").toUpperCase();
-                    }
-                });
-
-                if(beatmapId) {
-                    bancho.osuApi.beatmaps.getBySetId(beatmapId).then(async (x) => {
-                        if(x.length <= 0) return;
-    
-                        for(s in x) {
-                            if(x[s].id == setId) {
-                                beatmapCalc = x[s];
-                            }
-                        }
-    
-                        if(!beatmapCalc) beatmapCalc = x[0];
-
-                        if(beatmapCache.get(beatmapCalc.id) && ppCache.get(`${beatmapCalc.id}-${mods ? parseMods(mods) : 0}`)) {
-                            console.log(beatmapCache.get(beatmapCalc.id));
-                        } else {
-                            calculatedMap = await calculate(beatmapCalc.id, mods ? parseMods(mods) : 0, {
-                                n50: 0,
-                                n100: 0,
-                                n300: 0,
-                                nMisses: 0,
-                                passedObjects: (beatmapCalc.countNormal+beatmapCalc.countSlider+beatmapCalc.countSpinner),
-                                combo: beatmapCalc.maxCombo,
-                                accuracy: 100
-                            }, false, rows[0].secret);
-                        }
-
-                        bancho.getUser(rows[0].username).sendMessage(`[${tags["mod"] || tags["subscriber"] || tags["badges"] && tags.badges["vip"] ? "★" : "♦"}] ${tags["username"]} » [https://osu.ppy.sh/b/${calculatedMap.id} ${calculatedMap.artist} - ${calculatedMap.title} [${calculatedMap.version}]] ${mods ? "+"+mods : ""} | 95%: ${calculatedMap.fcPP.n95}pp | 98%: ${calculatedMap.fcPP.n98}pp | 99%: ${calculatedMap.fcPP.n99}pp | 100%: ${calculatedMap.fcPP.n100}pp | ${calculatedMap.stats.length} - ★ ${calculatedMap.stats.stars} - ♫ ${calculatedMap.stats.objects} - AR${calculatedMap.stats.ar} - OD${calculatedMap.stats.od}`).then(() => {
-                            twitch.say(channel, "/me Request sent!");
-                        });
-                    });
-                }
-            });
-        });
-    });
-
-    // await twitch.connect();
-    // await bancho.connect();
-    // await discord.login(config.credentials.discord.token);
-
-    // http.listen(2048, () => console.log("[info] HTTP listening on Port 2048!"));
 })();
 
 function parseMods(mods) {
