@@ -86,27 +86,30 @@ module.exports = class Bancho {
         });
     }
 
-    calculate(beatmapId, beatmapMods, scoreStats) {
+    calculate(beatmapId, scores = []) {
         return new Promise(async resolve => {
             await this.download(beatmapId);
 
+            let resolved = [];
             let pp = deps.pp.calculate({
-                path: deps.path.join("maps", `${beatmapId}.osu`),
-                mods: await this.parseMods(beatmapMods),
-                acc: scoreStats ? scoreStats.accuracy : 100,
-                combo: scoreStats ? scoreStats.combo : null
+                path:  deps.path.join("maps", `${beatmapId}.osu`),
+                params: scores
             });
 
-            resolve({
-                stars: pp[0].stars,
-                ar: Math.round(pp[0].ar * 100) / 100,
-                cs: Math.round(pp[0].cs * 100) / 100,
-                hp: Math.round(pp[0].hp * 100) / 100,
-                od: Math.round(pp[0].od * 100) / 100,
-                bpm: Math.round(pp[0].bpm),
-                pp: Math.round(pp[0].pp),
-                mods: beatmapMods ? "+"+beatmapMods : "+NM"
+            pp.forEach(value => {
+                resolved.push({
+                    stars: Math.round(value.stars * 100) / 100,
+                    ar: Math.round(value.ar * 10) / 10,
+                    cs: Math.round(value.cs * 100) / 100,
+                    hp: Math.round(value.hp * 100) / 100,
+                    od: Math.round(value.od * 100) / 100,
+                    bpm: Math.round(value.bpm),
+                    pp: Math.round(value.pp),
+                    mods: scores[0].mods ? "+"+scores[0].mods : "+NM"
+                });
             });
+
+            resolve(resolved);
         });
     }
 

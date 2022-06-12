@@ -2,7 +2,7 @@
 - Score Farm Overlay
 - UR Overlay
 - PP Overlay
-- Add PP Calculation
+- PP Calculation added - now I need to find a way to integrate scoreStats like acc, hits, misses, combo etc.
 - Twitch request bot - add more info to request and !np command
 - Add o!rdr support ? ?
 - Spectate bot / retrieve replay / check currently playing map with osu! api
