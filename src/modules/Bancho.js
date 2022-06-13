@@ -34,12 +34,12 @@ module.exports = class Bancho {
                 if(args.length <= 0) return;
                 console.log(`New verify request from >${data.user.ircUsername}<`);
 
-                deps.database.all(`SELECT verified, username, secret FROM users WHERE username = \"${data.user.ircUsername}\" AND secret = \"${args[0]}\"`, (err, rows) => {
+                deps.database.all(`SELECT verified, username, secret FROM users WHERE username = \"${data.user.ircUsername.toLowerCase()}\" AND secret = \"${args[0]}\"`, (err, rows) => {
                     if(err || rows.length == 0 || rows.length >= 1 & rows[0].verified == 1) {
                         return console.log(`Verification for user >${data.user.ircUsername}< failed!`);
                     }
 
-                    deps.database.run(`UPDATE users SET verified = \"1\" WHERE username = \"${data.user.ircUsername}\" and secret = \"${args[0]}\"`, err => {
+                    deps.database.run(`UPDATE users SET verified = \"1\" WHERE username = \"${data.user.ircUsername.toLowerCase()}\" and secret = \"${args[0]}\"`, err => {
                         if(err) return console.log(`Verification for user >${data.user.ircUsername}< failed!`);
 
                         console.log(`Verification for user >${data.user.ircUsername}< success!`);
