@@ -1,6 +1,7 @@
 require('dotenv').config();
 const deps = require("./constants.js");
 require("log-prefix")(() => { return `[${deps.moment(Date.now()).format("HH:mm:ss")} | kiyomii's service]`; });
+process.on("unhandledRejection", error => console.error("Promise rejection:", error));
 
 (() => {
     // Create db file if not exists
