@@ -3,7 +3,7 @@ const deps = require("../constants.js");
 module.exports = class WebSocket {
     createServer() {
         deps.database.run("CREATE TABLE IF NOT EXISTS users (username varchar(20) NOT NULL PRIMARY KEY, twitch varchar(20) NULL, discord bigint(20) NULL, secret int(8) NULL, hwid varchar(50) NULL, verified tinyint(1) DEFAULT 0)");
-        // deps.database.run("INSERT INTO users (username, twitch, discord) VALUES (\"kiyomii\", \"kiyowomii\", \"710490901482307626\")");
+        // deps.database.run("INSERT INTO users (username, twitch, discord) VALUES (\"jimeranu\", \"jimeranu\", \"654758539780292629\")");
 
         deps.io.on("connection", (socket) => {
             console.log(`New connection from >${socket.id}<`);
