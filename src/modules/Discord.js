@@ -29,7 +29,7 @@ module.exports = class Discord {
                                     deps.Bancho.editData("id", mapData.id, user.secret);
                                     deps.Bancho.editData("name", currentlyPlaying[0].details, user.secret);
 
-                                    console.log(await deps.Bancho.getData(user.secret));
+                                    // console.log(await deps.Bancho.getData(user.secret));
                                 }
                             }
                         });

@@ -90,6 +90,9 @@ module.exports = class Bancho {
 
     calculate(beatmapId, scores = []) {
         return new Promise(async resolve => {
+            let map = await deps.banchoClient.osuApi.beatmaps.getByBeatmapId(beatmapId);
+            if(map && map.length <= 0 || beatmapId == 0) return;
+            
             await this.download(beatmapId);
 
             let resolved = [];
@@ -107,7 +110,11 @@ module.exports = class Bancho {
                     od: Math.round(value.od * 100) / 100,
                     bpm: Math.round(value.bpm),
                     pp: Math.round(value.pp),
-                    mods: scores[0].mods ? "+"+scores[0].mods : "+NM"
+                    mods: scores[0].mods ? "+"+scores[0].mods : "+NM",
+                    totalLength: map[0].totalLength,
+                    countNormal: map[0].countNormal,
+                    countSlider: map[0].countSlider,
+                    countSpinner:  map[0].countSpinner
                 });
             });
 

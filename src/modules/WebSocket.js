@@ -92,7 +92,7 @@ module.exports = class WebSocket {
                     deps.Bancho.editData("combo", data.Stats.combo, data.secretId);
                     deps.Bancho.editData("passedObjects", data.Stats.passedObjects, data.secretId);
 
-                    console.log(await deps.Bancho.getData(data.secretId));
+                    // console.log(await deps.Bancho.getData(data.secretId));
                 }
             });
 

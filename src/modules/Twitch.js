@@ -17,7 +17,17 @@ module.exports = class Twitch {
             message = message.split(" ");
             let command = message[0].startsWith("!") ? message.splice(0, 1) : null;
 
-            if(command == "!np") {
+            if(command == "!np" || command == "!nppp") {
+                deps.database.all(`SELECT secret FROM users WHERE twitch = \"${channel.replace(/#/, "")}\"`, async (err, rows) => {
+                    if(err || rows.length <= 0) return;
+                    let object = deps.osu[rows[0].secret];
+                    if(object) {
+                        let pp = await deps.Bancho.calculate(object.Beatmap.id, [{ mods: object.Player.mods.value, acc: 95 }, { mods: object.Player.mods.value, acc: 98 }, { mods: object.Player.mods.value, acc: 99 }, { mods: object.Player.mods.value, acc: 100 }]);
+                        deps.twitchClient.say(channel, `/me [★] Playing » ${object.Beatmap.name} https://osu.ppy.sh/b/${object.Beatmap.id} ${object.Player.mods.value != 0 ? "+"+object.Player.mods.text : "+NM"} | 95%: ${pp[0].pp}pp | 98%: ${pp[1].pp}pp | 99%: ${pp[2].pp}pp | 100%: ${pp[3].pp}pp | ${deps.moment( object.Player.mods.text && object.Player.mods.text.match(/DT|NC/) ? ((Math.round(pp[0].totalLength*0.67) * 100) / 100)*1000  : pp[0].totalLength*1000).format("mm:ss")} - ★ ${pp[0].stars} - ♫ ${pp[0].countNormal+pp[0].countSpinner+pp[0].countSlider} - AR ${pp[0].ar} - OD ${pp[0].od}`);
+                    } else {
+                        deps.twitchClient.say(channel, "/me No data available at the moment.");
+                    }
+                });
                 return;
             }
 

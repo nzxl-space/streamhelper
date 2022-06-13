@@ -1,11 +1,4 @@
-- Key Overlay
-- Score Farm Overlay
-- UR Overlay
-- PP Overlay
-- PP Calculation added - now I need to find a way to integrate scoreStats like acc, hits, misses, combo etc.
-- Twitch request bot - add more info to request and !np command
+- Key Overlay, Score Farm Overlay, UR Overlay, PP Overlay (kinda done)
 - Add o!rdr support ? ?
 - Spectate bot / retrieve replay / check currently playing map with osu! api
-- Discord bot to check currently playing - needs id now, maybe create func to search map by name
-- Rewrite local-client-app code because it sucks right now.
 - Create web page with osu! login with user settings for basically everything (custom overlays, check current status of bot, etc.)
