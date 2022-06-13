@@ -7,7 +7,7 @@ module.exports = class Bancho {
             method: "POST",
             url: "https://osu.ppy.sh/oauth/token",
             data: {
-                client_id: process.env.OSU_CLIENt_ID,
+                client_id: process.env.OSU_CLIENT_ID,
                 client_secret: process.env.OSU_CLIENT_SECRET,
                 grant_type: "client_credentials",
                 scope: "public"
