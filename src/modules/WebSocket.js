@@ -76,6 +76,8 @@ module.exports = class WebSocket {
 
             socket.on("CLIENT", async data => {
                 if(deps.sockets[data.secretId]) {
+                    deps.Bancho.getData(data.secretId);
+                    
                     deps.Bancho.editData("setId", data.Beatmap.setId, data.secretId);
                     deps.Bancho.editData("id", data.Beatmap.id, data.secretId);
                     deps.Bancho.editData("name", data.Beatmap.name, data.secretId);
