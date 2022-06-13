@@ -4,7 +4,8 @@
   "description": "",
   "main": "src/app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "dotnet publish -c Release -p:PublishTrimmed=true -o ./src/static ./src/local-client-app && rm ./src/static/client.pdb"
   },
   "author": "NZXL/kiyomii",
   "license": "ISC",

@@ -35,6 +35,7 @@ namespace client
 
             if(!Utils.checkVersion(url, build)) {
                 Console.Write("You\'re using an outdated version of the client. \nDownload the newest one here: {0}/client.exe", url);
+                Console.ReadLine();
                 return;
             }
 
