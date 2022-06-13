@@ -11,8 +11,8 @@ namespace client
     class Client
     {
         static int build = 1;
-        // static String url = "https://ws.nzxl.space:443";
-        static String url = "http://localhost:2048";
+        static String url = "https://osu.nzxl.space:443";
+        // static String url = "http://localhost:2048";
         static Boolean _quitFlag = false;
         static CancellationTokenSource cts = new CancellationTokenSource();
         static string[] mainArgs;
