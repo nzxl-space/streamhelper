@@ -10,24 +10,20 @@ namespace client
 {
     class Client
     {
-        static int build = 1;
+        static int build = 2;
         static String url = "https://osu.nzxl.space:443";
         // static String url = "http://localhost:2048";
         static Boolean _quitFlag = false;
         static CancellationTokenSource cts = new CancellationTokenSource();
-        static string[] mainArgs;
+        public static string[] mainArgs;
         public static SocketIOClient.SocketIO socket;
         public static RegistryKey key;
 
         public static void Main(string[] args)
         {
             mainArgs = args;
+            
             Console.Clear();
-            if(!Utils.checkVersion(url, build)) {
-                Console.Write("You\'re using an outdated version of the client. \nDownload the newest one here: {0}/client.exe", url);
-                return;
-            }
-
             Console.Write("Connecting to server..\t");
             socket = Utils.connectServer(url);
 
@@ -35,6 +31,11 @@ namespace client
                 Console.Clear();
                 Console.WriteLine("Connected to {0}", url);
                 socket.OnDisconnected += skillIssue;
+            }
+
+            if(!Utils.checkVersion(url, build)) {
+                Console.Write("You\'re using an outdated version of the client. \nDownload the newest one here: {0}/client.exe", url);
+                return;
             }
 
             key = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\kiyomii");

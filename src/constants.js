@@ -48,7 +48,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer);
 
 // Updater
-const versionString = 1;
+const versionString = process.env.VERSION;
 
 module.exports = {
     moment: moment,

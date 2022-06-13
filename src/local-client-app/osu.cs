@@ -17,48 +17,51 @@ namespace client
         {
             _sreader = StructuredOsuMemoryReader.Instance.GetInstanceForWindowTitleHint(windowTitle);
             while(!cts.IsCancellationRequested) {
-                foreach(Process p in Process.GetProcesses()) {
-                    if(p.ProcessName == "osu!" && _sreader.CanRead) {
-                        _sreader.TryRead(BaseAddresses.GeneralData);
-                        _sreader.TryRead(BaseAddresses.Beatmap);
-                        _sreader.TryRead(BaseAddresses.Player);
-                        _sreader.TryRead(BaseAddresses.Skin);
-                        _sreader.TryRead(BaseAddresses.ResultsScreen);
+                try {
+                    foreach(Process p in Process.GetProcesses()) {
+                        if(p.ProcessName == "osu!" && _sreader.CanRead) {
+                            _sreader.TryRead(BaseAddresses.GeneralData);
+                            _sreader.TryRead(BaseAddresses.Beatmap);
+                            _sreader.TryRead(BaseAddresses.Player);
+                            _sreader.TryRead(BaseAddresses.Skin);
+                            _sreader.TryRead(BaseAddresses.ResultsScreen);
 
-                        var mods = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.MainMenu ? BaseAddresses.GeneralData.Mods : BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Mods.Value : BaseAddresses.Player.Mods.Value;
-                        var parsedMods = parseMods(mods);
+                            var mods = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.MainMenu ? BaseAddresses.GeneralData.Mods : BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Mods.Value : BaseAddresses.Player.Mods.Value;
+                            var parsedMods = parseMods(mods);
 
-                        if(Client.socket.Connected) {
-                            await Client.socket.EmitAsync("CLIENT", new {
-                                secretId = Client.key.GetValue("secret").ToString(),
-                                Beatmap = new {
-                                    setId = BaseAddresses.Beatmap.SetId,
-                                    id = BaseAddresses.Beatmap.Id,
-                                    name = BaseAddresses.Beatmap.MapString,
-                                },
-                                Player = new {
-                                    playing = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.Playing || BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? true : false,
-                                    skin = BaseAddresses.Skin.Folder.ToString(),
-                                    mods = new {
-                                        text = string.Join("", parsedMods),
-                                        value = mods
+                            if(Client.socket.Connected) {
+                                await Client.socket.EmitAsync("CLIENT", new {
+                                    secretId = Client.key.GetValue("secret").ToString(),
+                                    Beatmap = new {
+                                        setId = BaseAddresses.Beatmap.SetId,
+                                        id = BaseAddresses.Beatmap.Id,
+                                        name = BaseAddresses.Beatmap.MapString,
+                                    },
+                                    Player = new {
+                                        playing = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.Playing || BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? true : false,
+                                        skin = BaseAddresses.Skin.Folder.ToString(),
+                                        mods = new {
+                                            text = string.Join("", parsedMods),
+                                            value = mods
+                                        }
+                                    },
+                                    Stats = new {
+                                        accuracy = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? 100 : BaseAddresses.Player.Accuracy,
+                                        n300 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit300 : BaseAddresses.Player.Hit300,
+                                        n100 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit100 : BaseAddresses.Player.Hit100,
+                                        n50 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit50 : BaseAddresses.Player.Hit50,
+                                        nMisses = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.HitMiss : BaseAddresses.Player.HitMiss,
+                                        combo = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.MaxCombo : BaseAddresses.Player.MaxCombo,
+                                        passedObjects = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? (BaseAddresses.ResultsScreen.Hit300+BaseAddresses.ResultsScreen.Hit100+BaseAddresses.ResultsScreen.Hit50) : (BaseAddresses.Player.Hit300+BaseAddresses.Player.Hit100+BaseAddresses.Player.Hit50),
                                     }
-                                },
-                                Stats = new {
-                                    accuracy = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? 100 : BaseAddresses.Player.Accuracy,
-                                    n300 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit300 : BaseAddresses.Player.Hit300,
-                                    n100 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit100 : BaseAddresses.Player.Hit100,
-                                    n50 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit50 : BaseAddresses.Player.Hit50,
-                                    nMisses = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.HitMiss : BaseAddresses.Player.HitMiss,
-                                    combo = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.MaxCombo : BaseAddresses.Player.MaxCombo,
-                                    passedObjects = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? (BaseAddresses.ResultsScreen.Hit300+BaseAddresses.ResultsScreen.Hit100+BaseAddresses.ResultsScreen.Hit50) : (BaseAddresses.Player.Hit300+BaseAddresses.Player.Hit100+BaseAddresses.Player.Hit50),
-                                }
-                            });
+                                });
+                            }
                         }
                     }
+                    await Task.Delay(TimeSpan.FromSeconds(0.25));
+                } catch {
+                    Utils.restartApp(Client.mainArgs, cts);
                 }
-
-                await Task.Delay(TimeSpan.FromSeconds(0.25));
             }   
         }
 

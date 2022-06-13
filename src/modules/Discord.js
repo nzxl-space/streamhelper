@@ -17,6 +17,8 @@ module.exports = class Discord {
                     rows.forEach(user => {
                         if(deps.sockets[user.secret]) return;
                         deps.discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.filter(x => x.id == user.discord).map(async x => {
+                            if(!x.presence) return;
+                            
                             let activity = x.presence.activities;
                             if(activity.length <= 0) return;
 
