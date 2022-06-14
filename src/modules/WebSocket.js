@@ -3,7 +3,9 @@ const deps = require("../constants.js");
 module.exports = class WebSocket {
     createServer() {
         deps.database.run("CREATE TABLE IF NOT EXISTS users (username varchar(20) NOT NULL PRIMARY KEY, twitch varchar(20) NULL, discord bigint(20) NULL, secret int(8) NULL, hwid varchar(50) NULL, verified tinyint(1) DEFAULT 0)");
-        // deps.database.run("INSERT INTO users (username, twitch, discord) VALUES (\"jimeranu\", \"jimeranu\", \"654758539780292629\")");
+        // deps.database.run("UPDATE users SET verified = \"0\" WHERE username = \"kiyomii\"");
+        // deps.database.run("INSERT INTO users (username, twitch, discord) VALUES (\"kiyomii\", \"kiyowomii\", \"710490901482307626\")");
+
 
         deps.io.on("connection", (socket) => {
             console.log(`New connection from >${socket.id}<`);
@@ -18,7 +20,7 @@ module.exports = class WebSocket {
                             error: "Already registered or not found in database"
                         });
                     }
-                    if(data.id == rows[0].hwid || !rows[0].hwid & rows[0].verified == 0) {
+                    if(data.id == rows[0].hwid || !rows[0].hwid) {
                         let secretId = ((Math.random() + 1).toString(36).substring(7));
                         deps.database.run(`UPDATE users SET secret = \"${secretId}\", hwid = \"${data.id}\" WHERE username = \"${data.osu.toLowerCase()}\"`, err => {
                             if(err) {
@@ -93,8 +95,6 @@ module.exports = class WebSocket {
                     deps.Bancho.editData("nMisses", data.Stats.nMisses, data.secretId);
                     deps.Bancho.editData("combo", data.Stats.combo, data.secretId);
                     deps.Bancho.editData("passedObjects", data.Stats.passedObjects, data.secretId);
-
-                    // console.log(await deps.Bancho.getData(data.secretId));
                 }
             });
 
@@ -107,6 +107,54 @@ module.exports = class WebSocket {
         deps.httpServer.listen(2048, () => {
             console.log(`Listening on port ${deps.httpServer.address().port}!`);
             deps.app.use(deps.express.static(deps.path.join(__dirname, "..", "static")));
+        });
+
+        deps.app.get("/", (req, res) => {
+            if(req.session.loggedIn) 
+                res.sendFile(deps.path.join(__dirname, "..", "static", "index.html"));
+            else 
+                res.redirect("/skill_issue");
+        });
+
+        deps.app.get("/skill_issue", (req, res) => {
+            if(!req.query.code) return res.redirect(`https://osu.ppy.sh/oauth/authorize?client_id=${process.env.OSU_CLIENT_ID}&redirect_uri=${process.env.OSU_REDIRECT_URI}&response_type=code&scope=identify`);
+            deps.axios({
+                method: "POST",
+                url: "https://osu.ppy.sh/oauth/token",
+                data: {
+                    client_id: process.env.OSU_CLIENT_ID,
+                    client_secret: process.env.OSU_CLIENT_SECRET,
+                    code: req.query.code,
+                    grant_type: "authorization_code",
+                    redirect_uri: process.env.OSU_REDIRECT_URI
+                },
+                headers: {
+                    Accept: "application/json",
+                    "Content-Type": "application/json"
+                }
+            }).then(result => {
+                if(result && result.data.access_token) {
+                    deps.axios({
+                        method: "GET",
+                        url: "https://osu.ppy.sh/api/v2/me/osu",
+                        headers: {
+                            Authorization: `Bearer ${result.data.access_token}`,
+                            Accept: "application/json",
+                            "Content-Type": "application/json"
+                        }
+                    }).then(r => {
+                        deps.database.all(`SELECT secret FROM users WHERE username = \"${r.data.username}\"`, (err, rows) => {
+                            if(err || rows.length <= 0) return;
+
+                            req.session.loggedIn = true;
+                            req.session.osuData = r.data;
+                            req.session.secretId = rows[0].secret;
+
+                            res.redirect("/");
+                        });
+                    });
+                }
+            });
         });
 
         deps.app.get("/b", (req, res) => {

@@ -44,6 +44,15 @@ const express = require("express");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 const app = express();
+const session = require("express-session");
+const cookieParser = require("cookie-parser");
+app.use(cookieParser());
+app.use(session({
+    secret: "727WYSIONGOD",
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false }
+}));
 const httpServer = createServer(app);
 const io = new Server(httpServer);
 

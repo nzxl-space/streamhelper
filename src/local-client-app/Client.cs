@@ -10,7 +10,7 @@ namespace client
 {
     class Client
     {
-        static int build = 2;
+        static int build = 3;
         static String url = "https://osu.nzxl.space:443";
         // static String url = "http://localhost:2048";
         static Boolean _quitFlag = false;
@@ -18,6 +18,7 @@ namespace client
         public static string[] mainArgs;
         public static SocketIOClient.SocketIO socket;
         public static RegistryKey key;
+        static Boolean openedBrowser = false;
 
         public static void Main(string[] args)
         {
@@ -48,7 +49,7 @@ namespace client
             socket.On("REGISTERED", response => {
                 JObject data = JObject.Parse(response.GetValue().ToString());
                 if((bool) data["success"] == true) Console.WriteLine("Please verify your identity by sending `!verify {0}` to kiyomii in osu!.", data["secret"]);
-                else Console.WriteLine("It seems like your account is not enabled yet. Slide into my dms (nzxl#6334) to resolve.");
+                else Console.WriteLine("HWID mismatch! DM nzxl#6334 to resolve.");
             });
 
             socket.On("VERIFIED", response => {
@@ -63,13 +64,30 @@ namespace client
                 JObject data = JObject.Parse(response.GetValue().ToString());
                 if((bool) data["success"] == true) {
                     Console.WriteLine("Logged in as {0}!", key.GetValue("username").ToString());
+                    Console.WriteLine("F1 = Open Dashboard | CTRL+J = Reset settings | CTRL+C = Exit");
                     osu.read(cts, args.FirstOrDefault());
-                } else Console.WriteLine("Failed to login due to an invalid secret or hwid. Slide into my dms (nzxl#6334) to resolve.");
+
+                    if(!openedBrowser) {
+                        Process.Start("explorer", url);
+                        openedBrowser = true;
+                    }
+                } else Console.WriteLine("Account disabled. DM nzxl#6334 to resolve.");
             });
 
             while(!_quitFlag) {
                 var keyInfo = Console.ReadKey(true);
                 _quitFlag = keyInfo.Key == ConsoleKey.C && keyInfo.Modifiers == ConsoleModifiers.Control;
+
+                if(keyInfo.Key == ConsoleKey.F1 && openedBrowser) {
+                    Process.Start("explorer", url);
+                }
+
+                if(keyInfo.Key == ConsoleKey.J && keyInfo.Modifiers == ConsoleModifiers.Control) {
+                    if(Registry.CurrentUser.OpenSubKey(@"SOFTWARE\kiyomii") != null)
+                        Registry.CurrentUser.DeleteSubKey(@"SOFTWARE\kiyomii");
+
+                    Utils.restartApp(mainArgs, cts);
+                }
             }
         }
 

@@ -8,5 +8,6 @@ maps/*
 # build stuff
 src/local-client-app/bin
 src/local-client-app/obj
+src/static/client.exe
 # vs settings
 .vscode
