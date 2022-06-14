@@ -143,7 +143,7 @@ module.exports = class WebSocket {
                             "Content-Type": "application/json"
                         }
                     }).then(r => {
-                        deps.database.all(`SELECT secret FROM users WHERE username = \"${r.data.username}\"`, (err, rows) => {
+                        deps.database.all(`SELECT secret FROM users WHERE username = \"${r.data.username.toLowerCase()}\"`, (err, rows) => {
                             if(err || rows.length <= 0) return;
 
                             req.session.loggedIn = true;
