@@ -27,12 +27,14 @@ module.exports = class Discord {
                                 let currentData = await deps.Bancho.getData(user.secret);
                                 if(currentData.Beatmap.name != currentlyPlaying[0].details) {
                                     let mapData = await deps.Bancho.lookupBeatmap(currentlyPlaying[0].details);
+                                    deps.Bancho.editData("Discord", true, user.secret);
                                     deps.Bancho.editData("setId", mapData.beatmapset_id, user.secret);
                                     deps.Bancho.editData("id", mapData.id, user.secret);
                                     deps.Bancho.editData("name", currentlyPlaying[0].details, user.secret);
-
-                                    // console.log(await deps.Bancho.getData(user.secret));
+                                    deps.Bancho.editData("playing", true, user.secret);
                                 }
+                            } else {
+                                deps.Bancho.editData("playing", false, user.secret);
                             }
                         });
                     });

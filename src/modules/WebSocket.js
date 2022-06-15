@@ -68,17 +68,28 @@ module.exports = class WebSocket {
                 });
             });
 
-            socket.on("WEB", data => {
+            socket.on("WEB", secretId => {
                 console.log(`New web request from >${socket.id}< ..`);
-                if(deps.sockets[data]) {
-                    socket.join(`${data}`);
-                    console.log(`Web request from >${socket.id}< identified as ${deps.sockets[data].username}!`);
-                }
+
+                deps.database.all(`SELECT username FROM users WHERE secret = \"${secretId}\"`, (err, rows) => {
+                    if(err || rows.length <= 0) return;
+                    console.log(`Web request from >${socket.id}< identified as ${rows[0].username}!`);
+                    socket.emit("JOINED");
+                });
+            });
+
+            socket.on("REQUEST", secretId => {
+                deps.database.all(`SELECT username FROM users WHERE secret = \"${secretId}\"`, (err, rows) => {
+                    if(err || rows.length <= 0) return;
+                    socket.emit("DATA", deps.osu[secretId]);
+                });
             });
 
             socket.on("CLIENT", async data => {
                 if(deps.sockets[data.secretId]) {
                     deps.Bancho.getData(data.secretId);
+
+                    deps.Bancho.editData("Discord", false, data.secretId);
                     
                     deps.Bancho.editData("setId", data.Beatmap.setId, data.secretId);
                     deps.Bancho.editData("id", data.Beatmap.id, data.secretId);
@@ -106,12 +117,11 @@ module.exports = class WebSocket {
         
         deps.httpServer.listen(2048, () => {
             console.log(`Listening on port ${deps.httpServer.address().port}!`);
-            deps.app.use(deps.express.static(deps.path.join(__dirname, "..", "static")));
         });
 
         deps.app.get("/", (req, res) => {
-            if(req.session.loggedIn) 
-                res.sendFile(deps.path.join(__dirname, "..", "static", "index.html"));
+            if(req.session.loggedIn)
+                res.render("index", { username: req.session.osuData.username, avatar: req.session.osuData.avatar_url, secretId: req.session.secretId });
             else 
                 res.redirect("/skill_issue");
         });

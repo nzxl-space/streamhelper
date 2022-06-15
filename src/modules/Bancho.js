@@ -186,27 +186,35 @@ module.exports = class Bancho {
     getData(secretId) {
         return new Promise(resolve => {
             if(!deps.osu[secretId]) {
-                deps.osu[secretId] = {
-                    Beatmap: {
-                      setId: 0,
-                      id: 0,
-                      name: ""
-                    },
-                    Player: {
-                      playing: false,
-                      skin: '',
-                      mods: { text: '', value: 0 }
-                    },
-                    Stats: {
-                      accuracy: 0,
-                      n300: 0,
-                      n100: 0,
-                      n50: 0,
-                      nMisses: 0,
-                      combo: 0,
-                      passedObjects: 0
+                deps.database.all(`SELECT username, twitch FROM users WHERE secret = \"${secretId}\"`, (err, rows) => {
+                    if(err || rows.length <= 0) return;
+                    deps.osu[secretId] = {
+                        Info: {
+                            Twitch: deps.twitchClient.getChannels().includes(`#${rows[0].twitch}`),
+                            Socket: deps.sockets[secretId],
+                            Discord: true
+                        },
+                        Beatmap: {
+                          setId: 0,
+                          id: 0,
+                          name: ""
+                        },
+                        Player: {
+                          playing: false,
+                          skin: '',
+                          mods: { text: '', value: 0 }
+                        },
+                        Stats: {
+                          accuracy: 0,
+                          n300: 0,
+                          n100: 0,
+                          n50: 0,
+                          nMisses: 0,
+                          combo: 0,
+                          passedObjects: 0
+                        }
                     }
-                }
+                });
             }
 
             resolve(deps.osu[secretId]);

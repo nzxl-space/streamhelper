@@ -10,7 +10,7 @@ namespace client
 {
     class Client
     {
-        static int build = 3;
+        static int build = 4;
         static String url = "https://osu.nzxl.space:443";
         // static String url = "http://localhost:2048";
         static Boolean _quitFlag = false;
@@ -19,18 +19,23 @@ namespace client
         public static SocketIOClient.SocketIO socket;
         public static RegistryKey key;
         static Boolean openedBrowser = false;
+        static Boolean connecting = false;
 
         public static void Main(string[] args)
         {
             mainArgs = args;
+
+            if(connecting) return;
             
             Console.Clear();
             Console.Write("Connecting to server..\t");
+            connecting = true;
             socket = Utils.connectServer(url);
 
             if(socket.Connected) {
                 Console.Clear();
                 Console.WriteLine("Connected to {0}", url);
+                connecting = false;
                 socket.OnDisconnected += skillIssue;
             }
 
