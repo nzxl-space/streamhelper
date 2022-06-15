@@ -54,7 +54,7 @@
             var active = "home";
 
             var socket = io();
-            socket.on("connect", () => setInterval(() => socket.emit("REQUEST", secretId)));
+            socket.on("connect", () => setInterval(() => socket.emit("REQUEST", secretId), 500));
             socket.on("DATA", data => {
                 if(active == "home") {
                     document.getElementById("discord-status").style = data.Info.Discord ? "color: green;" : "color: red;";
