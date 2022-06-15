@@ -68,16 +68,6 @@ module.exports = class WebSocket {
                 });
             });
 
-            socket.on("WEB", secretId => {
-                console.log(`New web request from >${socket.id}< ..`);
-
-                deps.database.all(`SELECT username FROM users WHERE secret = \"${secretId}\"`, (err, rows) => {
-                    if(err || rows.length <= 0) return;
-                    console.log(`Web request from >${socket.id}< identified as ${rows[0].username}!`);
-                    socket.emit("JOINED");
-                });
-            });
-
             socket.on("REQUEST", secretId => {
                 deps.database.all(`SELECT username FROM users WHERE secret = \"${secretId}\"`, (err, rows) => {
                     if(err || rows.length <= 0) return;

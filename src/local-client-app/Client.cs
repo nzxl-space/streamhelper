@@ -19,23 +19,23 @@ namespace client
         public static SocketIOClient.SocketIO socket;
         public static RegistryKey key;
         static Boolean openedBrowser = false;
-        static Boolean connecting = false;
+        // static Boolean connecting = false;
 
         public static void Main(string[] args)
         {
             mainArgs = args;
 
-            if(connecting) return;
+            // if(connecting) return;
             
             Console.Clear();
             Console.Write("Connecting to server..\t");
-            connecting = true;
+            // connecting = true;
             socket = Utils.connectServer(url);
 
             if(socket.Connected) {
                 Console.Clear();
                 Console.WriteLine("Connected to {0}", url);
-                connecting = false;
+                // connecting = false;
                 socket.OnDisconnected += skillIssue;
             }
 

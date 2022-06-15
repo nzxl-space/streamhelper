@@ -58,9 +58,9 @@ namespace client
                             }
                         }
                     }
-                    await Task.Delay(TimeSpan.FromSeconds(0.25));
+                    await Task.Delay(TimeSpan.FromSeconds(.25));
                 } catch {
-                    Utils.restartApp(Client.mainArgs, cts);
+                    _sreader.Dispose();
                 }
             }   
         }
