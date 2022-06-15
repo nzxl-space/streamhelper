@@ -12,7 +12,6 @@ namespace client
     {
         static StructuredOsuMemoryReader _sreader;
         static OsuBaseAddresses BaseAddresses = new OsuBaseAddresses();
-
         public static async void read(CancellationTokenSource cts, string windowTitle)
         {
             _sreader = StructuredOsuMemoryReader.Instance.GetInstanceForWindowTitleHint(windowTitle);
@@ -60,7 +59,7 @@ namespace client
                     }
                     await Task.Delay(TimeSpan.FromSeconds(.25));
                 } catch {
-                    _sreader.Dispose();
+                    // can't read osu memory exception
                 }
             }   
         }

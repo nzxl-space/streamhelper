@@ -25,7 +25,7 @@ module.exports = class Discord {
                             let currentlyPlaying = activity.filter(x => x.name == "osu!" && x.type == "PLAYING" && x.details);
                             if(currentlyPlaying.length >= 1) {
                                 let currentData = await deps.Bancho.getData(user.secret);
-                                if(currentData.Beatmap.name != currentlyPlaying[0].details) {
+                                if(currentData && currentData.Beatmap.name != currentlyPlaying[0].details) {
                                     let mapData = await deps.Bancho.lookupBeatmap(currentlyPlaying[0].details);
                                     deps.Bancho.editData("Discord", true, user.secret);
                                     deps.Bancho.editData("setId", mapData.beatmapset_id, user.secret);
