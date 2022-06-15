@@ -191,7 +191,7 @@ module.exports = class Bancho {
                     deps.osu[secretId] = {
                         Info: {
                             Twitch: deps.twitchClient.getChannels().includes(`#${rows[0].twitch}`),
-                            Socket: deps.sockets[secretId],
+                            Socket: Object.keys(deps.sockets).includes(secretId),
                             Discord: true
                         },
                         Beatmap: {
