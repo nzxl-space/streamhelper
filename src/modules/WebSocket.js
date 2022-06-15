@@ -115,6 +115,7 @@ module.exports = class WebSocket {
                 }
                 else {
                     res.status(200).send(`your account is not registered in the database, you should dm nzxl#6334\nhere is a random quote: \"I really love Fubuki. Like, a lot. Like, a whole lot. You have no idea. I love her so much that it is inexplicable, and I'm ninety-nine percent sure that I have an unhealthy obsession. I will never get tired of listening that sweet, angelic voice of her.\"`);
+                    req.session.destroy();
                 }
             }
             else {
