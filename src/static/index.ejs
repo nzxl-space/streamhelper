@@ -54,7 +54,7 @@
             var active = "home";
 
             var socket = io();
-            socket.on("connect", () => setInterval(() => socket.emit("REQUEST", secretId), 500));
+            socket.on("connect", () => setInterval(() => socket.emit("REQUEST", secretId), 5000));
             socket.on("DATA", data => {
                 if(active == "home") {
                     document.getElementById("discord-status").style = data.Info.Discord ? "color: green;" : "color: red;";
@@ -63,7 +63,7 @@
                     document.getElementById("twitch-status").style = data.Info.Twitch ? "color: green;" : "color: red;";
                     document.getElementById("osu-status").style = data.Player.playing ? "color: green;" : "color: red;";
                     document.getElementById("np").innerHTML = data.Beatmap.name;
-                    document.getElementById("np-link").setAttribute("onClick", `window.open("https://osu.ppy.sh/b/`+data.Beatmap.id+`", '_blank').focus()`);
+                    document.getElementById("np").setAttribute("onClick", `window.open("https://osu.ppy.sh/b/`+data.Beatmap.id+`", '_blank').focus()`);
                 }
                 console.log(data);
             });
