@@ -110,10 +110,17 @@ module.exports = class WebSocket {
         });
 
         deps.app.get("/", (req, res) => {
-            if(req.session.loggedIn)
-                res.render("index", { username: req.session.osuData.username, avatar: req.session.osuData.avatar_url, secretId: req.session.secretId });
-            else 
+            if(req.session.loggedIn) {
+                if(req.session.secretId) {
+                    res.render("index", { username: req.session.osuData.username, avatar: req.session.osuData.avatar_url, secretId: req.session.secretId });
+                }
+                else {
+                    res.status(200).send(`your account is not registered in the database, you should dm nzxl#6334\nhere is a random quote: \"I really love Fubuki. Like, a lot. Like, a whole lot. You have no idea. I love her so much that it is inexplicable, and I'm ninety-nine percent sure that I have an unhealthy obsession. I will never get tired of listening that sweet, angelic voice of her.\"`);
+                }
+            }
+            else {
                 res.redirect("/skill_issue");
+            }
         });
 
         deps.app.get("/skill_issue", (req, res) => {
@@ -143,15 +150,15 @@ module.exports = class WebSocket {
                             "Content-Type": "application/json"
                         }
                     }).then(r => {
+                        req.session.loggedIn = true;
+                        req.session.osuData = r.data;
+
                         deps.database.all(`SELECT secret FROM users WHERE username = \"${r.data.username.toLowerCase()}\"`, (err, rows) => {
                             if(err || rows.length <= 0) return;
-
-                            req.session.loggedIn = true;
-                            req.session.osuData = r.data;
                             req.session.secretId = rows[0].secret;
-
-                            res.redirect("/");
                         });
+                        
+                        res.redirect("/");
                     });
                 }
             });
