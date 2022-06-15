@@ -1,5 +1,4 @@
 - Key Overlay, Score Farm Overlay, UR Overlay, PP Overlay (kinda done)
 - Add o!rdr support ? ?
 - Spectate bot / retrieve replay / check currently playing map with osu! api
-- Create web page with osu! login with user settings for basically everything (custom overlays, check current status of bot, etc.)
-- fix client crashes
+- Website created, now it needs the bot settings and ooc collab!!

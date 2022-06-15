@@ -6,7 +6,6 @@ module.exports = class WebSocket {
         // deps.database.run("UPDATE users SET verified = \"0\" WHERE username = \"kiyomii\"");
         // deps.database.run("INSERT INTO users (username, twitch, discord) VALUES (\"kiyomii\", \"kiyowomii\", \"710490901482307626\")");
 
-
         deps.io.on("connection", (socket) => {
             console.log(`New connection from >${socket.id}<`);
 
