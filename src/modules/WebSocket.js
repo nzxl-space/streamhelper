@@ -150,15 +150,17 @@ module.exports = class WebSocket {
                             "Content-Type": "application/json"
                         }
                     }).then(r => {
-                        req.session.loggedIn = true;
-                        req.session.osuData = r.data;
-
                         deps.database.all(`SELECT secret FROM users WHERE username = \"${r.data.username.toLowerCase()}\"`, (err, rows) => {
-                            if(err || rows.length <= 0) return;
-                            req.session.secretId = rows[0].secret;
+                            if(err || rows.length <= 0) {
+                                console.log(`${r.data.username} not registered.`);
+                            }
+
+                            req.session.loggedIn = true;
+                            req.session.osuData = r.data;
+                            req.session.secretId = rows.length >= 1 ? rows[0].secret : null;
+
+                            res.redirect("/");
                         });
-                        
-                        res.redirect("/");
                     });
                 }
             });
