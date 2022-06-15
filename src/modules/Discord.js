@@ -22,6 +22,8 @@ module.exports = class Discord {
                             let activity = x.presence.activities;
                             if(activity.length <= 0) return;
 
+                            if(!deps.sockets[user.secret]) deps.Bancho.editData("Discord", true, user.secret);
+
                             let currentlyPlaying = activity.filter(x => x.name == "osu!" && x.type == "PLAYING" && x.details);
                             if(currentlyPlaying.length >= 1) {
                                 let currentData = await deps.Bancho.getData(user.secret);
