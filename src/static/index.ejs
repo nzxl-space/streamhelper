@@ -29,6 +29,7 @@
                     </div>
                 </nav>
                 <div class="content">
+                    <%- include('./pages/home.ejs') %>
                 </div>
             </div>
         </div>
@@ -42,7 +43,7 @@
             });
 
             var secretId = "<%= secretId %>";
-            var active;
+            var active = "home";
             var socketData;
 
             var home = `<%- include('./pages/home.ejs') %>`;
@@ -50,7 +51,7 @@
             var ooc = `<%- include('./pages/ooc.ejs') %>`;
 
             var socket = io();
-            socket.on("connect", () => setInterval(() => socket.emit("REQUEST", secretId), 5000));
+            socket.on("connect", () => setInterval(() => socket.emit("REQUEST", secretId), 1000));
             socket.on("DATA", data => {
                 if(active == "home") {
                     // status
