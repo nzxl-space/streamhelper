@@ -81,7 +81,7 @@ namespace client
             if((num & 1<<14) != 0) mods.Add("PF");
 
             if(mods.Count <= 0) {
-                mods.Add("None");
+                mods.Add("NM");
             }
 
             return mods;

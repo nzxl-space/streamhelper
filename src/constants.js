@@ -5,8 +5,8 @@ const fs = require("fs");
 const https = require("https");
 const axios = require("axios");
 const Regex = {
-    beatmapLink: /^(https:\/\/osu\.ppy\.sh\/beatmapsets\/)|([0-9]+)|\#osu^\/|([0-9]+)/g,
-    beatmapMods: /^^EZ|NF|HT|SD|HD|HR|DT|NC|FL|RX|SO/ig
+    beatmapLink: /(?<=osu\.ppy\.sh\/s\/)(?:[0-9]+)|(?<=osu\.ppy\.sh\/b\/)(?:[0-9]+)|(?<=osu\.ppy\.sh\/beatmapsets\/)(?:[0-9]+)|(?<=osu\.ppy\.sh\/beatmapsets\/)(?:[0-9]+)(?=#osu\/[0-9]+)/,
+    beatmapMods: /^NF|EZ|HD|HR|(SD|PF)|(NC|DT)|RX|HT|FL|SO/ig
 };
 
 // Twitch
