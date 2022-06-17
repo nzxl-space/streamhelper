@@ -30,7 +30,8 @@ const pp = require("rosu-pp");
 // Discord
 const { Client, Intents } = require("discord.js");
 const discordClient = new Client({
-    intents: [ Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_PRESENCES ]
+    partials: ["CHANNEL"],
+    intents: [ Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_PRESENCES, Intents.FLAGS.DIRECT_MESSAGES, Intents.FLAGS.DIRECT_MESSAGE_TYPING ]
 });
 
 // Storage

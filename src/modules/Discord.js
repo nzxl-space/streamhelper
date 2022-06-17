@@ -1,3 +1,4 @@
+const { MessageEmbed } = require('discord.js');
 const deps = require("../constants.js");
 
 module.exports = class Discord {
@@ -42,6 +43,56 @@ module.exports = class Discord {
                     });
                 });
             }, 5*1000);
+        });
+
+        deps.discordClient.on("messageCreate", message => {
+            if(message.author.id != process.env.ADMIN || message.author.bot || !message.content.startsWith("!")) return;
+            let args = message.content.replace("!", "").split(" ");
+            let command = args.splice(0, 1);
+
+            if(command == "help") {
+                message.channel.send({ content: "Request command:", embeds: [new MessageEmbed()
+                    .setTitle(command.toString().toUpperCase())
+                    .setDescription("A list of all management commands")
+                    .addField("!list", "List all current users", false)
+                    .addField("!add <username> <twitch> <discord>", "Add a new user to db", true)
+                    .addField("!remove <username>", "Remove a user from db", true)]});
+                return;
+            }
+
+            if(command == "list") {
+                deps.database.all("SELECT username, twitch FROM users", (err, rows) => {
+                    if(err || rows.length <= 0) return message.reply("No users found");
+                    message.reply(JSON.stringify(rows));
+                });
+                return;
+            }
+
+            if(command == "add") {
+                if(args.length < 3) return message.reply("!add <username> <twitch> <discord>");
+                if(!Number(args[2]) || !args[0].match(/[A-z0-9]/g) || args[1].match(/[A-z0-9]/g)) return;
+
+                deps.database.run(`INSERT INTO users (username, twitch, discord) VALUES (\"${args[0].toLowerCase()}\", \"${args[1].toLowerCase()}\", \"${Number(args[2])}\")`, (err) => {
+                    if(err) return message.reply("Error occured while adding user to db");
+                    message.reply(`Added user \`${args[0]}\` to database`);
+
+                    deps.twitchClient.join(`#${args[1].toLowerCase()}`);
+                });
+
+                return;
+            }
+
+            if(command == "remove") {
+                if(args.length < 2) return message.reply("!remove <username> <twitch>");
+
+                deps.database.run(`DELETE FROM users WHERE username = \"${args[0].toLowerCase()}\"`, (err) => {
+                    if(err) return message.reply("Error occured while removing user from db");
+                    message.reply(`Removed user \`${args[0].toLowerCase()}\` from database`);
+
+                    deps.twitchClient.part(`#${args[1]}`);
+                });
+                return;
+            }
         });
 
         deps.discordClient.login(process.env.DISCORD_TOKEN);

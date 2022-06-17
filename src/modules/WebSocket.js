@@ -114,7 +114,7 @@ module.exports = class WebSocket {
                     res.render("index", { username: req.session.osuData.username, avatar: req.session.osuData.avatar_url, secretId: req.session.secretId });
                 }
                 else {
-                    res.status(200).send(`your account is not registered in the database, you should dm nzxl#6334\nhere is a random quote: \"I really love Fubuki. Like, a lot. Like, a whole lot. You have no idea. I love her so much that it is inexplicable, and I'm ninety-nine percent sure that I have an unhealthy obsession. I will never get tired of listening that sweet, angelic voice of her.\"`);
+                    res.status(200).send(`If you see this, you\'re probably not registered or did not verify your identity with the client (https://osu.nzxl.space/client.exe).\nPlease try again! If it still does not work, DM nzxl#6334`);
                     req.session.destroy();
                 }
             }
