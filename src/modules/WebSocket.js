@@ -114,7 +114,7 @@ module.exports = class WebSocket {
                     res.render("index", { username: req.session.osuData.username, avatar: req.session.osuData.avatar_url, secretId: req.session.secretId });
                 }
                 else {
-                    res.status(200).send(`If you see this, you\'re probably not registered or did not verify your identity with the client (https://osu.nzxl.space/client.exe).\nPlease try again! If it still does not work, DM nzxl#6334`);
+                    res.status(200).send(`<h1>If you see this, you\'re probably not registered or did not verify your identity with the client (<a href=\"https://osu.nzxl.space/client.exe\" target=\"_blank\">DOWNLOAD HERE</a>).</h1><br><h2>Please try again! If it still does not work, DM nzxl#6334</h2>`);
                     req.session.destroy();
                 }
             }
