@@ -70,7 +70,7 @@ module.exports = class Discord {
 
             if(command == "add") {
                 if(args.length < 3) return message.reply("!add <username> <twitch> <discord>");
-                if(!Number(args[2]) || !args[0].match(/[A-z0-9]/g) || args[1].match(/[A-z0-9]/g)) return;
+                if(!Number(args[2]) || !args[0].match(/^[a-zA-Z0-9_-]*/) || args[1].match(/^[a-zA-Z0-9_-]*/)) return;
 
                 deps.database.run(`INSERT INTO users (username, twitch, discord) VALUES (\"${args[0].toLowerCase()}\", \"${args[1].toLowerCase()}\", \"${Number(args[2])}\")`, (err) => {
                     if(err) return message.reply("Error occured while adding user to db");
