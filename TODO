@@ -3,3 +3,4 @@
 - Spectate bot / retrieve replay / check currently playing map with osu! api
 - Website created, now it needs the bot settings and ooc collab!!
 - can't open website if not verified on client side (need to fix asap)
+- if you register in client and close app while the verification window is there, the user will be hardlocked, and needs to be resetted manually
