@@ -2,7 +2,7 @@
 node_modules/
 package-lock.json
 # config
-.env
+*.env
 storage.db
 maps/*
 # build stuff

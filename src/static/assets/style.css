@@ -158,3 +158,18 @@ li:last-child:after {
     display: inline-block;
 }
 /* --------------------------------------- */
+hr.solid {
+    border-top: 3px solid #bbb;
+}
+input {
+    /* display: block; */
+}
+.twitch {
+    color: white;
+}
+.discord {
+    color: white;
+}
+.overlays {
+    color: white;
+}
