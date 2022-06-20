@@ -65,8 +65,8 @@ module.exports = class Twitch {
                     }
                     let object = deps.osu[rows[0].secret];
                     if(object) {
-                        let modsMatch = message.join("").replace(/^\+/, "").match(deps.Regex.beatmapMods), 
-                        mods = message.length >= 1 && modsMatch ? modsMatch.join("").toUpperCase() : object.Player.mods.text,
+                        let modsMatch = message.join("").match(deps.Regex.beatmapMods), 
+                        mods = message.length >= 1 && modsMatch ? modsMatch.replace(/\+/, "").toUpperCase() : object.Player.mods.text,
                         parsedMods = await deps.Bancho.parseMods(mods),
                         pp = await deps.Bancho.calculate(object.Beatmap.id, [{ mods: parsedMods, acc: 95 }, { mods: parsedMods, acc: 98 }, { mods: parsedMods, acc: 99 }, { mods: parsedMods, acc: 100 }]);
                         
@@ -78,9 +78,9 @@ module.exports = class Twitch {
                 return;
             }
 
-            message = message.toString();
+            message = message.join(" ");
             let beatmapId = message.match(deps.Regex.beatmapLink);
-            let mods = message.replace(/^https:\/\//g, "").match(deps.Regex.beatmapMods);
+            let mods = message.match(deps.Regex.beatmapMods);
 
             if(beatmapId) {
                 let map = await deps.banchoClient.osuApi.beatmaps.getBySetId(beatmapId[0]) || await deps.banchoClient.osuApi.beatmaps.getByBeatmapId(beatmapId[0]);
