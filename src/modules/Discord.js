@@ -75,8 +75,6 @@ module.exports = class Discord {
                 deps.database.run(`INSERT INTO users (username, twitch, discord) VALUES (\"${args[0].toLowerCase()}\", \"${args[1].toLowerCase()}\", \"${Number(args[2])}\")`, (err) => {
                     if(err) return message.reply("Error occured while adding user to db");
                     message.reply(`Added user \`${args[0]}\` to database`);
-
-                    deps.twitchClient.join(`#${args[1].toLowerCase()}`);
                 });
 
                 return;
@@ -88,8 +86,6 @@ module.exports = class Discord {
                 deps.database.run(`DELETE FROM users WHERE username = \"${args[0].toLowerCase()}\"`, (err) => {
                     if(err) return message.reply("Error occured while removing user from db");
                     message.reply(`Removed user \`${args[0].toLowerCase()}\` from database`);
-
-                    deps.twitchClient.part(`#${args[1]}`);
                 });
                 return;
             }

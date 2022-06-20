@@ -18,7 +18,7 @@ module.exports = class Bancho {
             }
         }).then(result => {
             deps.accessToken = result.data.access_token;
-            console.log("Access Token set!");
+            console.log("Bancho Access Token set!");
         });
 
         deps.banchoClient.on("connected", () => {
@@ -61,12 +61,6 @@ module.exports = class Bancho {
         });
 
         deps.banchoClient.connect();
-    }
-
-    spectate() {
-        return new Promise(resolve => {
-
-        });
     }
 
     download(beatmapId) {

@@ -2,15 +2,55 @@ const deps = require("../constants.js");
 
 module.exports = class Twitch {
     createTwitch() {
+        deps.axios({
+            method: "POST",
+            url: "https://id.twitch.tv/oauth2/token",
+            data: {
+                client_id: process.env.TWITCH_CLIENT_ID,
+                client_secret: process.env.TWITCH_CLIENT_SECRET,
+                grant_type: "client_credentials"
+            },
+            headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json"
+            }
+        }).then(result => {
+            deps.twitchClient.accessToken = result.data.access_token;
+            console.log("Twitch Access Token set!");
+        });
+
         deps.twitchClient.on("connected", () => {
             console.log("Twitch connected!");
-            deps.database.all("SELECT twitch FROM users", (err, rows) => {
-                if(err || rows.length <= 0) return;
-                rows.forEach(user => {
-                    console.log(`Joining twitch channel >${user.twitch}< ..`);
-                    deps.twitchClient.join(`#${user.twitch}`);
+            setInterval(() => {
+                deps.database.all("SELECT twitch FROM users", (err, rows) => {
+                    if(err || rows.length <= 0) return;
+                    rows.forEach(user => {
+                        deps.axios({
+                            method: "GET",
+                            url: "https://api.twitch.tv/helix/streams",
+                            params: {
+                                user_login: user.twitch
+                            },
+                            headers: {
+                                Accept: "application/json",
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${deps.twitchClient.accessToken}`,
+                                "Client-Id": process.env.TWITCH_CLIENT_ID
+                            }
+                        }).then(result => {
+                            if(result.data.data.length >= 1) {
+                                if(!deps.twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                                    deps.twitchClient.join(`#${user.twitch}`);
+                                }
+                            } else {
+                                if(deps.twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                                    deps.twitchClient.part(`#${user.twitch}`);
+                                }
+                            }
+                        });
+                    });
                 });
-            });
+            }, 5*1000);
         });
 
         deps.twitchClient.on("message", async (channel, tags, message, self) => {
@@ -20,7 +60,9 @@ module.exports = class Twitch {
 
             if(command == "!np" || command == "!nppp") {
                 deps.database.all(`SELECT secret FROM users WHERE twitch = \"${channel.replace(/#/, "")}\"`, async (err, rows) => {
-                    if(err || rows.length <= 0) return;
+                    if(err || rows.length <= 0) {
+                        return deps.twitchClient.part(channel);
+                    }
                     let object = deps.osu[rows[0].secret];
                     if(object) {
                         let modsMatch = message.join("").replace(/^\+/, "").match(deps.Regex.beatmapMods), 
@@ -45,7 +87,9 @@ module.exports = class Twitch {
                 if(!map) return;
 
                 deps.database.all(`SELECT username FROM users WHERE twitch = \"${channel.replace(/#/, "")}\"`, async (err, rows) => {
-                    if(err || rows.length <= 0) return;
+                    if(err || rows.length <= 0) {
+                        return deps.twitchClient.part(channel);
+                    }
 
                     let parsedMods = mods ? await deps.Bancho.parseMods(mods.join("")) : 0;
                     let pp = await deps.Bancho.calculate(map[0].beatmapId, [{ mods: parsedMods, acc: 95 }, { mods: parsedMods, acc: 98 }, { mods: parsedMods, acc: 99 }, { mods: parsedMods, acc: 100 }]);

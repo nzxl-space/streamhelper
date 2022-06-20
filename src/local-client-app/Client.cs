@@ -10,7 +10,7 @@ namespace client
 {
     class Client
     {
-        static int build = 5;
+        static int build = 6;
         static String url = "https://osu.nzxl.space:443";
         // static String url = "http://localhost:2048";
         static Boolean _quitFlag = false;
@@ -76,7 +76,7 @@ namespace client
                         Process.Start("explorer", url);
                         openedBrowser = true;
                     }
-                } else Console.WriteLine("Account disabled. DM nzxl#6334 to resolve.");
+                } else Console.WriteLine("Account disabled. DM nzxl#6334 to resolve.\nIf this issue persists, you can try registering again by pressing CTRL+J !");
             });
 
             while(!_quitFlag) {

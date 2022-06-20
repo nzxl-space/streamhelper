@@ -2,23 +2,32 @@ const deps = require("../constants.js");
 
 module.exports = class WebSocket {
     createServer() {
-        deps.database.run("CREATE TABLE IF NOT EXISTS users (username varchar(20) NOT NULL PRIMARY KEY, twitch varchar(20) NULL, discord bigint(20) NULL, secret int(8) NULL, hwid varchar(50) NULL, verified tinyint(1) DEFAULT 0)");
-        // deps.database.run("UPDATE users SET verified = \"0\" WHERE username = \"kiyomii\"");
-        // deps.database.run("INSERT INTO users (username, twitch, discord) VALUES (\"kiyomii\", \"kiyowomii\", \"710490901482307626\")");
-
+        deps.database.run("CREATE TABLE IF NOT EXISTS users (username varchar(20) NOT NULL PRIMARY KEY, twitch varchar(20) NULL, discord bigint(20) NULL, secret int(8) NULL, hwid varchar(50) NULL, verified tinyint(1) DEFAULT 0, config nvarchar DEFAULT \"{}\")");
+        
         deps.io.on("connection", (socket) => {
             console.log(`New connection from >${socket.id}<`);
 
             socket.on("REGISTER", data => {
                 console.log(`Registering >${socket.id}< to database..`);
-                deps.database.all(`SELECT hwid, verified FROM users WHERE username = \"${data.osu.toLowerCase()}\"`, (err, rows) => {
-                    if(err || rows.length <= 0 || rows.length >= 1 && rows[0].verified == 1) {
+                deps.database.all(`SELECT username, secret, hwid, verified FROM users WHERE username = \"${data.osu.toLowerCase()}\"`, (err, rows) => {
+                    if(err || rows.length <= 0) {
                         console.log(`Registering >${socket.id}< to database failed!`);
                         return socket.emit("REGISTERED", {
                             success: false,
                             error: "Already registered or not found in database"
                         });
                     }
+                    
+                    if(rows.length >= 1 && rows[0].verified == 1) {
+                        console.log(`Registering >${socket.id}< to database success!`);
+                        return socket.emit("VERIFIED", {
+                            success: true,
+                            username: rows[0].username,
+                            secret: rows[0].secret,
+                            error: "Successfully verified identity"
+                        });
+                    } 
+
                     if(data.id == rows[0].hwid || !rows[0].hwid) {
                         let secretId = ((Math.random() + 1).toString(36).substring(7));
                         deps.database.run(`UPDATE users SET secret = \"${secretId}\", hwid = \"${data.id}\" WHERE username = \"${data.osu.toLowerCase()}\"`, err => {
