@@ -50,7 +50,7 @@ module.exports = class Twitch {
                         });
                     });
                 });
-            }, 5*1000);
+            }, 60*1000);
         });
 
         deps.twitchClient.on("message", async (channel, tags, message, self) => {
