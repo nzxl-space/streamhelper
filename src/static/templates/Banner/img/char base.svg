@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="240" viewBox="0 0 384 240">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+        fill-rule: evenodd;
+      }
+    </style>
+  </defs>
+  <path id="avatar_base" data-name="avatar base" class="cls-1" d="M322,248H569L706,8H390L322,124V248Z" transform="translate(-322 -8)"/>
+</svg>

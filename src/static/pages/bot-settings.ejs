@@ -1,19 +1,23 @@
-<p>Twitch</p>
-<div class="twitch">
-    <button>Part channel</button><br>
-    <input type="checkbox" id="request"><label for="request">Beatmap Request</label><br>
-    <input type="checkbox" id="np"><label for="np">Now Playing</label><br>
+<div id="settings">
+    <hr class="solid">
+    <p>Twitch</p>
+    <div class="twitch">
+        <label for="bot"><input type="checkbox" id="bot">Enabled</label>
+        <label for="request"><input type="checkbox" id="request">Beatmap Request</label>
+        <label for="np"><input type="checkbox" id="np">Now Playing</label>
+    </div>
+    <hr class="solid">
+    <p>Discord</p>
+    <div class="discord">
+        <label for="activity"><input type="checkbox" id="activity">Use Activity for NP</label>
+    </div>
+    <hr class="solid">
+    <p>Overlays</p>
+    <div class="overlays">
+        <label for="pp"><input type="checkbox" id="pp">Performance Points</label>
+        <label for="ur"><input type="checkbox" id="ur">Unstable Rate</label>
+        <label for="score"><input type="checkbox" id="score">Score Farming</label>
+    </div>
+    <hr class="solid">
+    <button>save config</button>
 </div>
-<hr class="solid">
-<p>Discord</p>
-<div class="discord">
-    <input type="checkbox" id="activity"><label for="activity">Use Activity</label><br>
-</div>
-<hr class="solid">
-<p>Overlays</p>
-<div class="overlays">
-    <input type="checkbox" id="pp"><label for="pp">Performance Points</label><br>
-    <input type="checkbox" id="ur"><label for="ur">Unstable Rate</label><br>
-    <input type="checkbox" id="score"><label for="score">Score Farming</label><br>
-</div>
-<button>SAVE</button>

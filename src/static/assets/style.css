@@ -111,6 +111,26 @@ li:last-child:after {
 }
 /* ---------------------------------------------- */
 
+footer {
+    background-color: #121114;
+    margin-top: 20px;
+    height: 50px;
+    border-radius: 10px;
+    box-shadow: rgb(0 0 0 / 30%) 0px 0px 16px;
+    color: #B1ADC1;
+}
+
+footer a {
+    text-decoration: none;
+    color: #B1ADC1;
+    transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out;
+}
+
+footer a:hover {
+    color: #CCC5E8;
+    transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out;
+}
+
 /* ----------------CONTENT---------------- */
 .content {
     margin-top: 30px;
@@ -150,7 +170,7 @@ li:last-child:after {
 }
 
 .status {
-    margin-left: 90px;
+    margin-left: 35px;
 }
 
 .status p {
@@ -159,17 +179,69 @@ li:last-child:after {
 }
 /* --------------------------------------- */
 hr.solid {
-    border-top: 3px solid #bbb;
+    border-top: 3px solid #1F1E23;
 }
-input {
-    /* display: block; */
+
+#settings p {
+    color: #CCC5E8;
 }
-.twitch {
-    color: white;
+
+#settings label {
+    display: block;
+    color: #B1ADC1;
 }
-.discord {
-    color: white;
+
+#settings input[type="checkbox"] {
+    margin-right: 5px;
 }
-.overlays {
-    color: white;
+
+#settings button {
+    color: #CCC5E8;
+    background-color: #1F1E23;
+    border-radius: 15px;
+    text-align: center;
+    border: none;
+    transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out;
+    min-width: 150px;
+}
+
+#settings button:hover {
+    color: #B1ADC1;
+    background-color: #1f1e23af;
+    transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out;
+}
+/* --------------------------------------- */
+
+.pfp {
+    background: rgb(31,30,35);
+    background: linear-gradient(75deg, rgba(31,30,35,1) 0%, rgba(82,77,91,1) 100%);
+    width: 192px;
+    height: 192px;
+    display: inline-block;
+    margin-right: 20px;
+}
+
+.pfp iframe {
+    display: block;
+    -webkit-transform: scale(0.75);
+    -webkit-transform-origin: 0 0;
+}
+
+.banner {
+    background: rgb(31,30,35);
+    background: linear-gradient(75deg, rgba(31,30,35,1) 0%, rgba(82,77,91,1) 100%);
+    width: 687px;
+    height: 192px;
+    display: inline-block;
+}
+
+.banner iframe {
+    display: block;
+    -webkit-transform: scale(0.75);
+    -webkit-transform-origin: 0 0;
+}
+
+.placeholders {
+    margin-left: 14%;
+    margin-right: 14%;
 }

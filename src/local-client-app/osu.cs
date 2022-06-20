@@ -45,6 +45,7 @@ namespace client
                                         }
                                     },
                                     Stats = new {
+                                        ur = BaseAddresses.Player.HitErrors,
                                         accuracy = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? 100 : BaseAddresses.Player.Accuracy,
                                         n300 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit300 : BaseAddresses.Player.Hit300,
                                         n100 = BaseAddresses.GeneralData.OsuStatus == OsuMemoryStatus.ResultsScreen ? BaseAddresses.ResultsScreen.Hit100 : BaseAddresses.Player.Hit100,

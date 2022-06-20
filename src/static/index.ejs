@@ -31,11 +31,16 @@
                 <div class="content">
                     <%- include('./pages/home.ejs') %>
                 </div>
+                <footer class="text-center text-lg-start">
+                    <div class="text-center p-3"><a href="https://nzxl.space/">nzxl.space</a> © 2022</div>
+                </footer>
             </div>
         </div>
         <script src="/assets/bootstrap.js"></script>
         <script src="/assets/jquery.js"></script>
         <script src="/assets/socket.io.js"></script>
+        <script src="/assets/sweetalert.js"></script>
+        <link rel="stylesheet" href="/assets/sweetalert.css">
         <script>
             $(window).on('load', () => {
                 $('.preloader').fadeOut('slow');

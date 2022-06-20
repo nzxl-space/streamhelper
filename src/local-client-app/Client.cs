@@ -10,7 +10,7 @@ namespace client
 {
     class Client
     {
-        static int build = 6;
+        static int build = 7;
         static String url = "https://osu.nzxl.space:443";
         // static String url = "http://localhost:2048";
         static Boolean _quitFlag = false;
