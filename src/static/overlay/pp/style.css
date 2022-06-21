@@ -1,13 +1,32 @@
 @import url('https://fonts.googleapis.com/css2?family=Varela+Round&display=swap');
 
 
-/* --------------------------
+/* --- Config --- */
+:root {
+  /* Colors */
+  --bg-color: #1b1b1b;
+  --bg-shadow: 5px 5px 20px #000;
+  --bg-opacity: 0.85;
 
-		Moved to Config.css 
+  --font-primary: #c5a69b;
+  --font-accent: #c47b63;
+  --font-shadow: 2px 2px 10px #000;
 
-    ------------------------- */
+  /*
+   Text Scroll Animation for Title and Artist
+   1 = ON, 0 = OFF 
 
+   Suggested Speeds: 80-100
+  */
+  --text-scroll: 1;
+  --text-scroll-speed: 85;
 
+  /* Hud Size */
+  --width: 900px;
+  --height: 200px;
+
+  --font-size: 18px;
+}
 
 
 /* Do Not Touch unless you know what you are doing! */
