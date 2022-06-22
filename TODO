@@ -5,3 +5,5 @@
 - can't open website if not verified on client side (need to fix asap)
 - config stuff
 - can't use discord activity for np when user is in a multi lobby
+- redo the client socket stuff, because it's very weird at this moment:
+    one way to do it: save socket id with username and secret -> if user uses overlay or opens the dashboard just emit to username (it should emit to one or more sockets by that without issues)

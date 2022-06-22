@@ -29,7 +29,8 @@ let root = document.documentElement;
 // Websocket
 socket.on("connect", () => {
   var params = new Proxy(new URLSearchParams(window.location.search), { get: (searchParams, prop) => searchParams.get(prop), });
-  socket.emit("authWeb", params.s);
+  console.log(params.s)
+  socket.on("connect", () => setInterval(() => socket.emit("REQUEST", params.s), 1000));
 });
 
 // Temp Variables
@@ -56,7 +57,8 @@ function generateRank(data) {
   else return "D";
 }
 
-socket.on("data", (data) => {
+socket.on("DATA", (data) => {
+  console.log(data);
   if(data.mods.includes("HD") || data.mods.includes("FL")) hdfl = true;
   else hdfl = false;
 
