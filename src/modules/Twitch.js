@@ -83,7 +83,7 @@ module.exports = class Twitch {
             let mods = message.match(deps.Regex.beatmapMods);
 
             if(beatmapId) {
-                let map = await deps.banchoClient.osuApi.beatmaps.getBySetId(beatmapId[1]) || await deps.banchoClient.osuApi.beatmaps.getByBeatmapId(beatmapId[0]);
+                let map = await deps.banchoClient.osuApi.beatmaps.getBySetId(beatmapId[0]) || await deps.banchoClient.osuApi.beatmaps.getByBeatmapId(beatmapId[0]);
                 if(!map) return;
 
                 deps.database.all(`SELECT username FROM users WHERE twitch = \"${channel.replace(/#/, "")}\"`, async (err, rows) => {
