@@ -38,19 +38,17 @@ module.exports = class Twitch {
                                 "Client-Id": process.env.TWITCH_CLIENT_ID
                             }
                         }).then(result => {
-                            if(result.data.data.length >= 1) {
-                                if(!deps.twitchClient.getChannels().includes(`#${user.twitch}`)) {
-                                    deps.twitchClient.join(`#${user.twitch}`);
-                                }
-                            } else {
-                                if(deps.twitchClient.getChannels().includes(`#${user.twitch}`)) {
-                                    deps.twitchClient.part(`#${user.twitch}`);
-                                }
+                            if(result.data.data.length >= 1 && result.data.data[0].game_name == "osu!" && !deps.twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                                console.log(`Listening for requests on #${user.twitch}`);
+                                deps.twitchClient.join(`#${user.twitch}`);
+                            } else if(result.data.data.length >= 1 && result.data.data[0].game_name != "osu!" && deps.twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                                console.log(`Left channel #${user.twitch}`);
+                                deps.twitchClient.part(`#${user.twitch}`);
                             }
                         });
                     });
                 });
-            }, 60*1000);
+            }, 5*1000);
         });
 
         deps.twitchClient.on("message", async (channel, tags, message, self) => {
@@ -79,12 +77,16 @@ module.exports = class Twitch {
             }
 
             message = message.join(" ");
-            let beatmapId = message.match(deps.Regex.beatmapLink);
+            let beatmapId = message.match(deps.Regex.beatmapId);
+            let setId = message.match(deps.Regex.setId);
             let mods = message.match(deps.Regex.beatmapMods);
 
             if(beatmapId) {
-                let map = await deps.banchoClient.osuApi.beatmaps.getBySetId(beatmapId[0]) || await deps.banchoClient.osuApi.beatmaps.getByBeatmapId(beatmapId[0]);
+                let map = await deps.banchoClient.osuApi.beatmaps.getBySetId(beatmapId[0]);
                 if(!map) return;
+
+                if(setId)
+                    map = map.filter(x => x.id == setId);
 
                 deps.database.all(`SELECT username FROM users WHERE twitch = \"${channel.replace(/#/, "")}\"`, async (err, rows) => {
                     if(err || rows.length <= 0) {
