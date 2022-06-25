@@ -9,3 +9,4 @@
     one way to do it: save socket id with username and secret -> if user uses overlay or opens the dashboard just emit to username (it should emit to one or more sockets by that without issues)
 - beatmap request only accepts 1 mod for now (fuck regex literally)
 - bot doesn't leave channel when channel goes offline (opps)
+- access tokens invalidate after 24 hours
