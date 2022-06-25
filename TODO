@@ -11,3 +11,4 @@
 - bot doesn't leave channel when channel goes offline (opps)
 - access tokens invalidate after 24 hours
 - verify tokens can't expire, maybe add a 5 mins window to verify or else dismiss
+- refactor code it's a fucking mess
