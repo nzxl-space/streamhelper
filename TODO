@@ -14,3 +14,4 @@
 - refactor code it's a fucking mess
 - move server backend to c#
 - replace console app with a winforms/electron browser that uses https://osu.nzxl.space/
+- move storage to ood - maybe mongodb or redis
