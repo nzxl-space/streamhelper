@@ -3,6 +3,10 @@ const deps = require("./constants.js");
 require("log-prefix")(() => { return `[${deps.moment(Date.now()).format("HH:mm:ss")} | kiyomii's service]`; });
 process.on("unhandledRejection", error => console.error("Promise rejection:", error));
 
+setTimeout(() => {
+    process.exit();
+}, 12*60*60*1000);
+
 (() => {
     // Create db file if not exists
     if(!deps.fs.existsSync("./storage.db")) {
