@@ -41,7 +41,7 @@ module.exports = class Twitch {
                             if(result.data.data.length >= 1 && result.data.data[0].game_name == "osu!" && !deps.twitchClient.getChannels().includes(`#${user.twitch}`)) {
                                 console.log(`Listening for requests on #${user.twitch}`);
                                 deps.twitchClient.join(`#${user.twitch}`);
-                            } else {
+                            } else if(result.data.data.length <= 0 || result.data.data.length >= 1 && result.data.data[0].game_name != "osu!") {
                                 if(deps.twitchClient.getChannels().includes(`#${user.twitch}`)) {
                                     console.log(`Left channel #${user.twitch}`);
                                     deps.twitchClient.part(`#${user.twitch}`);
@@ -50,7 +50,7 @@ module.exports = class Twitch {
                         });
                     });
                 });
-            }, 5*1000);
+            }, 2*60*1000);
         });
 
         deps.twitchClient.on("message", async (channel, tags, message, self) => {
