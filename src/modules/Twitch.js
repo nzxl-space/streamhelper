@@ -41,7 +41,7 @@ module.exports = class Twitch {
                             if(result.data.data.length >= 1 && result.data.data[0].game_name == "osu!" && !deps.twitchClient.getChannels().includes(`#${user.twitch}`)) {
                                 console.log(`Listening for requests on #${user.twitch}`);
                                 deps.twitchClient.join(`#${user.twitch}`);
-                            } else if(result.data.data.length >= 1 && result.data.data[0].game_name != "osu!" && deps.twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                            } else {
                                 console.log(`Left channel #${user.twitch}`);
                                 deps.twitchClient.part(`#${user.twitch}`);
                             }
@@ -69,9 +69,9 @@ module.exports = class Twitch {
                         pp = await deps.Bancho.calculate(object.Beatmap.id, [{ mods: parsedMods, acc: 95 }, { mods: parsedMods, acc: 98 }, { mods: parsedMods, acc: 99 }, { mods: parsedMods, acc: 100 }]);
                         
                         deps.twitchClient.say(channel, `/me [★] Playing » ${object.Beatmap.name} https://osu.ppy.sh/b/${object.Beatmap.id} ${mods ? "+"+mods : "+NM"} | 95%: ${pp[0].pp}pp | 98%: ${pp[1].pp}pp | 99%: ${pp[2].pp}pp | 100%: ${pp[3].pp}pp | ${deps.moment( mods && mods.indexOf("DT") >= 1 || mods && mods.indexOf("NC") >= 1 ? ((Math.round(pp[0].totalLength*0.67) * 100) / 100)*1000  : pp[0].totalLength*1000).format("mm:ss")} - ★ ${pp[0].stars} - ♫ ${pp[0].countNormal+pp[0].countSpinner+pp[0].countSlider} - AR ${pp[0].ar} - OD ${pp[0].od}`);
-                    } else {
-                        deps.twitchClient.say(channel, "/me No data available at the moment.");
-                    }
+                    }//else {
+                    //     deps.twitchClient.say(channel, "/me No data available at the moment.");
+                    // }
                 });
                 return;
             }
@@ -92,6 +92,8 @@ module.exports = class Twitch {
                     if(err || rows.length <= 0) {
                         return deps.twitchClient.part(channel);
                     }
+
+                    if(!map[0].beatmapId) return;
 
                     let parsedMods = mods ? await deps.Bancho.parseMods(mods.join("").replace("+", "")) : 0;
                     let pp = await deps.Bancho.calculate(map[0].beatmapId, [{ mods: parsedMods, acc: 95 }, { mods: parsedMods, acc: 98 }, { mods: parsedMods, acc: 99 }, { mods: parsedMods, acc: 100 }]);

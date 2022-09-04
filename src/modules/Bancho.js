@@ -159,6 +159,8 @@ module.exports = class Bancho {
                         }
                     }
                 }
+            }).catch(err => {
+                resolve(null);
             });
         });
     }

@@ -30,6 +30,7 @@ module.exports = class Discord {
                                 let currentData = await deps.Bancho.getData(user.secret);
                                 if(currentData && currentData.Beatmap.name != currentlyPlaying[0].details) {
                                     let mapData = await deps.Bancho.lookupBeatmap(currentlyPlaying[0].details);
+                                    if(!mapData) return;
                                     deps.Bancho.editData("Discord", true, user.secret);
                                     deps.Bancho.editData("setId", mapData.beatmapset_id, user.secret);
                                     deps.Bancho.editData("id", mapData.id, user.secret);
