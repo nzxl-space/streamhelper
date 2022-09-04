@@ -5,8 +5,8 @@ const fs = require("fs");
 const https = require("https");
 const axios = require("axios");
 const Regex = {
-    setId: /(?<=osu\.ppy\.sh\/s\/)(?:[0-9]+)|(?<!osu\.ppy\.sh\/beatmapsets\/)(?![0-9]+#osu\/)(?:[0-9]+)/,
-    beatmapId: /(?<=osu\.ppy\.sh\/b\/)(?:[0-9]+)|(?<=osu\.ppy\.sh\/beatmapsets\/)(?:[0-9]+)/,
+    setId: /(?<=#osu\/|\/s\/)\d+/g,
+    beatmapId: /(?<=beatmapsets\/|b\/)\d+/g,
     beatmapMods: /\+(NF|EZ|HD|HR|(SD|PF)|(NC|DT)|RX|HT|FL|SO)/ig
 };
 
