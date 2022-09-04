@@ -42,8 +42,10 @@ module.exports = class Twitch {
                                 console.log(`Listening for requests on #${user.twitch}`);
                                 deps.twitchClient.join(`#${user.twitch}`);
                             } else {
-                                console.log(`Left channel #${user.twitch}`);
-                                deps.twitchClient.part(`#${user.twitch}`);
+                                if(deps.twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                                    console.log(`Left channel #${user.twitch}`);
+                                    deps.twitchClient.part(`#${user.twitch}`);
+                                }
                             }
                         });
                     });
