@@ -152,7 +152,7 @@ const httpServer = createServer(app);
         }
     });
 
-    httpServer.listen(2048, () => {
+    httpServer.listen(process.env.PORT || 2048, () => {
         console.log(`Listening on port ${httpServer.address().port}!`);
         app.get("/", (req, res) => {
             res.render("index");
