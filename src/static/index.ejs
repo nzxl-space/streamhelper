@@ -33,7 +33,7 @@
                         confirmButtonText: "Authorize",
                         allowOutsideClick: false
                     }).then(() => {
-                        var discordPopup = window.open("https://discord.com/api/oauth2/authorize?client_id=965596379533684747&redirect_uri=http%3A%2F%2Flocalhost%3A2048%2Fdiscord&response_type=code&scope=identify%20connections%20guilds.join", "popUpWindow", "height=750,width=500");
+                        var discordPopup = window.open("https://discord.com/api/oauth2/authorize?client_id=965596379533684747&redirect_uri=https%3A%2F%2Fnzxl-space-streamhelper.herokuapp.com%2Fdiscord&response_type=code&scope=identify%20connections%20guilds.join", "popUpWindow", "height=750,width=500");
                         
                         Swal.fire({
                             title: 'Waiting for authorization..',
