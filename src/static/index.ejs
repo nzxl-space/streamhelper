@@ -3,87 +3,64 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>osu.nzxl.space | dashboard</title>
+        <title>nzxl.space</title>
         <link rel="icon" type="image/svg+xml" href="/assets/logo.svg" sizes="any"> 
-        <link rel="stylesheet" href="/assets/bootstrap.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css">
         <link rel="stylesheet" href="/assets/style.css">
     </head>
     <body>
+        <noscript>Please enable JavaScript in order for this site to work.</noscript>
         <div class="preloader"></div>
-        <div class="jumbotron vertical-center">
-            <div class="container-md">
-                <nav class="navbar navbar-expand-md">
-                    <a class="navbar-brand"><object data="/assets/logo.svg" width="150" height="40"></object></a>
-                    <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                        <ul class="navbar-nav mr-auto">
-                            <li class="nav-item"><a class="nav-link active" onclick="updateActive(this)">home</a></li>
-                            <li class="nav-item"><a class="nav-link" onclick="updateActive(this)">bot settings</a></li>
-                            <li class="nav-item"><a class="nav-link" onclick="updateActive(this)">ooc</a></li>
-                            <li class="nav-item"><a class="nav-link" href="https://discord.gg/qYhZnEkMf4" target="_blank">discord</a></li>
-                            <li class="nav-item"><a class="nav-link" href="/client.exe" target="_blank">download client</a></li>                    
-                        </ul>
-                    </div>                       
-                    <a class="navbar-user" href="https://osu.ppy.sh/u/<%=username %>" target="_blank"><%= username %></a>
-                    <div class="navbar-user-logo">
-                        <img src="<%= avatar %>">
-                    </div>
-                </nav>
-                <div class="content">
-                    <%- include('./pages/home.ejs') %>
-                </div>
-                <footer class="text-center text-lg-start">
-                    <div class="text-center p-3"><a href="https://nzxl.space/">nzxl.space</a> © 2022</div>
-                </footer>
-            </div>
-        </div>
-        <script src="/assets/bootstrap.js"></script>
-        <script src="/assets/jquery.js"></script>
-        <script src="/assets/socket.io.js"></script>
-        <script src="/assets/sweetalert.js"></script>
-        <link rel="stylesheet" href="/assets/sweetalert.css">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.min.js"></script>
+        <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.34/dist/sweetalert2.min.js"></script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-dark@5.0.12/dark.min.css">
         <script>
-            $(window).on('load', () => {
-                $('.preloader').fadeOut('slow');
-                $('.content').html(home);
-            });
+            $(window).on("load", () => {
+                $(".preloader").fadeOut("slow");
+                Swal.fire({
+                    imageUrl: "/assets/logo.svg",
+                    imageWidth: 140,
+                    imageHeight: 50,
+                    title: "Welcome!",
+                    text: "We'll walk you through this step-by-step, so you can get started quickly. This will only take a few seconds.",
+                    allowOutsideClick: false
+                }).then(() => {
+                    Swal.fire({
+                        title: "Link your Discord",
+                        text: "We need some of your info.. This is only used to gather osu! related data and your Twitch username.",
+                        footer: "<img class='activities-gif' src='/assets/activities.gif'/><a class='yuneedthis'>Why is this needed?</a>",
+                        confirmButtonText: "Authorize",
+                        allowOutsideClick: false
+                    }).then(() => {
+                        var discordPopup = window.open("https://discord.com/api/oauth2/authorize?client_id=965596379533684747&redirect_uri=http%3A%2F%2Flocalhost%3A2048%2Fdiscord&response_type=code&scope=identify%20connections%20guilds.join", "popUpWindow", "height=750,width=500");
+                        
+                        Swal.fire({
+                            title: 'Waiting for authorization..',
+                            showConfirmButton: false,
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                var checkPopup = setInterval(() => {
+                                    if(discordPopup.closed) {
+                                        clearInterval(checkPopup);
+                                        Swal.fire({
+                                            icon: "success",
+                                            title: "Discord Linked",
+                                            html: "Beatmap requests are now enabled.<br>Also did you know that there's also a !np command? 😎",
+                                            allowOutsideClick: false,
+                                            showConfirmButton: false
+                                        });
+                                    }
+                                }, 100);
+                            }
+                        });
+                    });
 
-            var secretId = "<%= secretId %>";
-            var active = "home";
-            var socketData;
-
-            var home = `<%- include('./pages/home.ejs') %>`;
-            var bot = `<%- include('./pages/bot-settings.ejs') %>`;
-            var ooc = `<%- include('./pages/ooc.ejs') %>`;
-
-            var socket = io();
-            socket.on("connect", () => setInterval(() => socket.emit("REQUEST", secretId), 1000));
-            socket.on("DATA", data => {
-                if(active == "home") {
-                    // status
-                    $('#discord-status').css("color", data.Info.Discord ? "green" : "red");
-                    $('#client-status').css("color", data.Info.Discord ? "red" : "green");
-                    $('#socket-status').css("color", data.Info.Socket ? "green" : "red");
-                    $('#twitch-status').css("color", data.Info.Twitch ? "green" : "red");
-                    $('#osu-status').css("color", data.Player.playing ? "green" : "red");
-
-                    // now playing
-                    $('#np').text(data.Beatmap.name ? data.Beatmap.name : "No data available");
-                    $('#np').attr("onclick", `window.open("https://osu.ppy.sh/b/${data.Beatmap.id}", '_blank').focus()`);
-                }
-
-                socketData = data;
-                console.log(socketData);
-            });
-
-            function updateActive(data) {
-                $('.active').removeClass("active");
-                $(data).addClass("active");
-                active = $('.active').text();
-                $('.content').fadeOut('fast', () => {
-                    $('.content').html(active == "home" ? home : active == "bot settings" ? bot : ooc);
-                    $('.content').fadeIn('fast');
+                    $("a.yuneedthis").on("click", function(){
+                        $("img.activities-gif").fadeToggle();
+                    });
                 });
-            }
+            });
         </script>
     </body>
 </html>
