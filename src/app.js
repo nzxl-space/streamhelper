@@ -2,7 +2,7 @@
 const Regex = {
     setId: /(?<=#osu\/|\/s\/)\d+/g,
     beatmapId: /(?<=beatmapsets\/|b\/)\d+/g,
-    beatmapMods: /\+(NF|EZ|HD|HR|(SD|PF)|(NC|DT)|RX|HT|FL|SO)/ig
+    beatmapMods: /(NF|EZ|HD|HR|(SD|PF)|(NC|DT)|RX|HT|FL|SO)/ig
 };
 const moment = require("moment");
 const path = require("path");
@@ -55,7 +55,7 @@ app.use(express.static(path.join(__dirname, "static")));
 const httpServer = createServer(app);
 
 (() => {
-    let db, discordUsers;
+    let db, discordUsers, currentlyPlaying = {};
     mongoClient.connect(async err => {
         if(err) return console.log("MongoDB failed!");
 
@@ -81,7 +81,6 @@ const httpServer = createServer(app);
         console.log(`Discord connected as ${discordClient.user.tag}!`);
         discordClient.user.setPresence({ activities: [{ name: "osu!", type: "PLAYING" }], status: "dnd" });
 
-        // Get osu map from activity .. 
         setInterval(() => {
             for(let i = 0; i < discordUsers.length; i++) {
                 discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache
@@ -106,9 +105,11 @@ const httpServer = createServer(app);
                                 console.log(`Listening for requests on #${user.twitch}`);
                             }
 
-                            if(activity[0].details)
-                                console.log(await lookupBeatmap(activity[0].details));
-
+                            if(activity[0].details) {
+                                currentlyPlaying[`#${user.twitch}`] = {};
+                                currentlyPlaying[`#${user.twitch}`].name = activity[0].details;
+                                currentlyPlaying[`#${user.twitch}`].mapData = await lookupBeatmap(activity[0].details);
+                            }
                         } else {
                             if(twitchClient.getChannels().includes(`#${user.twitch}`)) {
                                 twitchClient.part(`#${user.twitch}`);
@@ -125,8 +126,28 @@ const httpServer = createServer(app);
     twitchClient.on("connected", () => {
         console.log(`Twitch connected as ${process.env.TWITCH_USERNAME}!`);
         if(twitchClient.listeners("message").length <= 0) {
-            twitchClient.on("message", (channel, tags, message, self) => {
-                // listen to beatmap requests and !np command
+            twitchClient.on("message", async (channel, tags, message, self) => {
+                if(message.startsWith("!np")) {
+                    twitchClient.say(channel, `${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${currentlyPlaying[`${channel}`].mapData.url}`);
+                    return;
+                }
+
+                let beatmapId = message.match(Regex.beatmapId),
+                    setId = message.match(Regex.setId),
+                    mods = message.replace(/http|https/g, "").match(Regex.beatmapMods);
+
+                if(beatmapId) {
+                    let map = await banchoClient.osuApi.beatmaps.getBySetId(beatmapId[0]);
+                    if(!map || map.length <= 0) await banchoClient.osuApi.beatmaps.getByBeatmapId(beatmapId[0]);
+
+                    if(setId && map.length >= 1)
+                        map = map.filter(x => x.id == setId);
+
+                    db.collection("users").find({ twitch: channel.replace("#", "") }).toArray(async (err, result) => {
+                        if(err || result && result.length <= 0) return;
+                        banchoClient.getUser(result[0].osu).sendMessage(`${tags["username"]} » [https://osu.ppy.sh/b/${map[0].beatmapId} ${map[0].artist} ${map[0].title} [${map[0].version}]] ${mods ? `+${mods.join("").toUpperCase()}` : "+NM"} | ${moment(map[0].totalLength*1000).format("mm:ss")} - ★ ${Math.round(map[0].difficultyRating * 100) / 100} - AR${map[0].approachRate}`);
+                    });
+                }
             });
         }
     });
