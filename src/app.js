@@ -33,7 +33,7 @@ const banchoClient = new Banchojs.BanchoClient({
     password: process.env.OSU_PASSWORD,
     apiKey: process.env.OSU_API_KEY
 });
-const pp = require("rosu-pp");
+// const pp = require("rosu-pp");
 let osu_accessToken;
 
 // Discord
