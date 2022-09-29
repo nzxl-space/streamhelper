@@ -92,7 +92,7 @@ const httpServer = createServer(app);
                         let user = result[0],
                             activity = discordUser.presence.activities.filter(x => x.name == "osu!");
 
-                        if(activity.length >= 1) {
+                        if(activity.length >= 1 && activity[0].details != null) {
                             if(user.osu == null) {
                                 let osuUsername = activity[0].assets.largeText.match(/^\w+/);
                                 db.collection("users").updateOne({ userId: discordUsers[i] }, { $set: { osu: osuUsername[0] } }, (err, result) => {
