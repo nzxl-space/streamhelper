@@ -24,7 +24,10 @@ const twitchClient = new tmi.Client({
         password: process.env.TWITCH_PASSWORD
     }
 });
-let twitch_accessToken;
+let twitchApi = {
+    accessToken: null,
+    expires: 0
+};
 
 // osu! Bancho
 const Banchojs = require("bancho.js");
@@ -34,7 +37,10 @@ const banchoClient = new Banchojs.BanchoClient({
     apiKey: process.env.OSU_API_KEY
 });
 // const pp = require("rosu-pp");
-let osu_accessToken;
+let osuApi = {
+    accessToken: null,
+    expires: 0
+};
 
 // Discord
 const { Client, Intents } = require("discord.js");
@@ -92,7 +98,6 @@ const httpServer = createServer(app);
                         let user = result[0],
                             activity = discordUser.presence.activities.filter(x => x.name == "osu!");
 
-                        let timeout;
                         if(activity.length >= 1 && activity[0].details != null) {
                             if(user.osu == null) {
                                 let osuUsername = activity[0].assets.largeText.match(/^\w+/);
@@ -105,7 +110,7 @@ const httpServer = createServer(app);
                                 twitchClient.join(`#${user.twitch}`);
                                 console.log(`Listening for requests on #${user.twitch}`);
                             }
-
+                            
                             if(activity[0].details) {
                                 currentlyPlaying[`#${user.twitch}`] = {};
                                 currentlyPlaying[`#${user.twitch}`].name = activity[0].details;
@@ -120,7 +125,7 @@ const httpServer = createServer(app);
                     });
                 });
             }
-        }, 15*1000);
+        }, 30*1000);
     });
 
     twitchClient.connect();
@@ -203,12 +208,13 @@ const httpServer = createServer(app);
 
 function liveStatus(channel) {
     return new Promise(async (resolve) => {
-        if(!twitch_accessToken) {
+        if(!twitchApi.accessToken || (twitchApi.expires-Math.floor(Date.now() / 1000)) <= 1000) {
             await fetch(`https://id.twitch.tv/oauth2/token?client_id=${process.env.TWITCH_CLIENT_ID}&client_secret=${process.env.TWITCH_CLIENT_SECRET}&grant_type=client_credentials`, { 
                 method: "POST"
             }).then(async result => {
                 result = await result.json();
-                twitch_accessToken = result.access_token;
+                twitchApi.accessToken = result.access_token;
+                twitchApi.expires = (Math.floor(Date.now() / 1000)+result.expires_in);
             });
         }
 
@@ -217,7 +223,7 @@ function liveStatus(channel) {
             headers: {
                 "Accept": "application/json",
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${twitch_accessToken}`,
+                "Authorization": `Bearer ${twitchApi.accessToken}`,
                 "Client-Id": process.env.TWITCH_CLIENT_ID
             }
         }).then(async result => {
@@ -229,7 +235,7 @@ function liveStatus(channel) {
 
 function lookupBeatmap(beatmapName) {
     return new Promise(async (resolve) => {
-        if(!osu_accessToken) {
+        if(!osuApi.accessToken || (osuApi.expires-Math.floor(Date.now() / 1000)) <= 1000) {
             await fetch(`https://osu.ppy.sh/oauth/token`, {
                 method: "POST",
                 body: JSON.stringify({
@@ -244,23 +250,27 @@ function lookupBeatmap(beatmapName) {
                 }
             }).then(async result => {
                 result = await result.json();
-                osu_accessToken = result.access_token;
+                osuApi.accessToken = result.access_token;
+                osuApi.expires = (Math.floor(Date.now() / 1000)+result.expires_in);
             });
         }
 
         await fetch(`https://osu.ppy.sh/api/v2/beatmapsets/search?m=0&q=${beatmapName}&s=any`, {
             method: "GET",
             headers: {
-                "Authorization": `Bearer ${osu_accessToken}`,
+                "Authorization": `Bearer ${osuApi.accessToken}`,
                 "Content-Type": "application/json",
                 "Accept": "application/json"
             }
         }).then(async result => {
             result = await result.json();
             for(let i in result.beatmapsets) {
-                let map = result.beatmapsets[i];
-                if(map.artist.match(/\w+.\w+/) && map.artist.match(/\w+.\w+/)[0] == beatmapName.match(/\w+.\w+/)[0]) {
-                    let foundMap = map.beatmaps.find(o => o.version == beatmapName.match(/(?!.*\[)(?<=\[).+?(?=\])/)[0]);
+                let map = result.beatmapsets[i],
+                    artist = beatmapName.match(/\w+/)[0],
+                    version = beatmapName.match(/(?!.*\[)(?<=\[).+?(?=\])/)[0];
+
+                if(map.artist.match(/\w+/)[0] == artist) {
+                    let foundMap = map.beatmaps.find(m => m.version == version);
                     if(foundMap) {
                         resolve(foundMap);
                     }
