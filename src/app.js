@@ -92,6 +92,7 @@ const httpServer = createServer(app);
                         let user = result[0],
                             activity = discordUser.presence.activities.filter(x => x.name == "osu!");
 
+                        let timeout;
                         if(activity.length >= 1 && activity[0].details != null) {
                             if(user.osu == null) {
                                 let osuUsername = activity[0].assets.largeText.match(/^\w+/);
@@ -111,7 +112,7 @@ const httpServer = createServer(app);
                                 currentlyPlaying[`#${user.twitch}`].mapData = await lookupBeatmap(activity[0].details);
                             }
                         } else {
-                            if(twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                            if(twitchClient.getChannels().includes(`#${user.twitch}`) && await liveStatus(user.twitch) == false) {
                                 twitchClient.part(`#${user.twitch}`);
                                 console.log(`Left channel #${user.twitch}`);
                             }
