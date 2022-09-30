@@ -15,34 +15,69 @@ body {
     color: #CCC5E8;
 }
 
-.preloader {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    z-index: 9999;
-    background-repeat: no-repeat; 
-    background-color: black;
-    background-position: center;
+/* -------------------- SweetAlert2 Styling -------------------- */
+#swal2-title {
+    color: #CCC5E8 !important;
 }
 
+#swal2-html-container {
+    color: #B1ADC1 !important;
+}
+
+.swal2-container.swal2-center>.swal2-popup {    
+    border-radius: 10px;
+    background-color: #121114 !important;
+    box-shadow: rgb(0 0 0 / 30%) 0px 0px 16px !important;
+}
+
+.swal2-footer {
+    padding: 0 !important;
+    border-top: none !important;
+}
 
 a {
     text-decoration: none;
     cursor: pointer;
-    color: #6d6d6d;
-    transition: color 300ms ease-in-out;
+    color: #797489;
+    transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out;
+    user-select: none;
 }
 
 a:hover {
     cursor: pointer;
-    color: #9e9e9e;
-    transition: color 300ms ease-in-out;
+    color: #908aa3;
+    transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out;
+    user-select: none;
 }
 
-.activities-gif {
+.gif {
     display: none;
     position: absolute;
     bottom: 25%;
     width: 75%;
     z-index: 100;
 }
+/* ------------------------------------------------------------ */
+
+
+/* ---------------------- Button Styling ---------------------- */
+button {
+    color: #CCC5E8 !important;
+    background: none !important;
+    background-color: #1F1E23 !important;
+    border-radius: 15px !important;
+    text-align: center !important;
+    border: none !important;
+    transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out !important;
+    min-width: 150px !important;
+    border-color: transparent !important;
+    box-shadow: rgb(0 0 0 / 30%) 0px 0px 16px !important;
+}
+
+button:hover {
+    color: #B1ADC1 !important;
+    background-color: #1f1e23af !important;
+    border: none !important;
+    transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out !important;
+}
+/* ------------------------------------------------------------ */

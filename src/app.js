@@ -174,45 +174,45 @@ const httpServer = createServer(app);
     httpServer.listen(process.env.PORT || 2048, () => {
         console.log(`Listening on port ${httpServer.address().port}!`);
         app.get("/", (req, res) => {
-            res.render("index");
+            res.render("index", { discordURL: `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_PUBLIC}&redirect_uri=${process.env.DISCORD_REDIRECT_URI}&response_type=code&scope=identify%20connections%20guilds.join` });
         });
 
         app.get("/discord", (req, res) => {
-            if(!req.query.code) return;
-
-            oauth.tokenRequest({
-                clientId: process.env.DISCORD_PUBLIC,
-                clientSecret: process.env.DISCORD_SECRET,
-                code: req.query.code,
-                scope: "identify guilds",
-                grantType: "authorization_code",
-                redirectUri: process.env.DISCORD_REDIRECT_URI
-            }).then((data) => {
-                if(!data || data && !data["access_token"]) return;
-
-                oauth.getUser(data.access_token).then(async (user) => {
-                    await oauth.addMember({
-                        accessToken: data.access_token,
-                        botToken: process.env.DISCORD_TOKEN,
-                        guildId: process.env.DISCORD_GUILD,
-                        userId: user.id
-                    });
-
-                    oauth.getUserConnections(data.access_token).then((c) => {
-                        db.collection("users").find({ userId: user.id }).toArray((err, result) => {
-                            if(err || result.length <= 0) {
-                                db.collection("users").insertOne({
-                                    userId: user.id,
-                                    discordName: `${user.username}#${user.discriminator}`,
-                                    twitch: `${c.filter(x => x.type == "twitch")[0].name}`,
-                                    osu: null
-                                });
-                                discordUsers.push(user.id);
-                            }
+            if(req.query.code) {
+                oauth.tokenRequest({
+                    clientId: process.env.DISCORD_PUBLIC,
+                    clientSecret: process.env.DISCORD_SECRET,
+                    code: req.query.code,
+                    scope: "identify guilds",
+                    grantType: "authorization_code",
+                    redirectUri: process.env.DISCORD_REDIRECT_URI
+                }).then((data) => {
+                    if(!data || data && !data["access_token"]) return;
+    
+                    oauth.getUser(data.access_token).then(async (user) => {
+                        await oauth.addMember({
+                            accessToken: data.access_token,
+                            botToken: process.env.DISCORD_TOKEN,
+                            guildId: process.env.DISCORD_GUILD,
+                            userId: user.id
+                        });
+    
+                        oauth.getUserConnections(data.access_token).then((c) => {
+                            db.collection("users").find({ userId: user.id }).toArray((err, result) => {
+                                if(err || result.length <= 0) {
+                                    db.collection("users").insertOne({
+                                        userId: user.id,
+                                        discordName: `${user.username}#${user.discriminator}`,
+                                        twitch: `${c.filter(x => x.type == "twitch")[0].name}`,
+                                        osu: null
+                                    });
+                                    discordUsers.push(user.id);
+                                }
+                            });
                         });
                     });
                 });
-            });
+            }
 
             res.send("<script>window.close()</script>");
         });
