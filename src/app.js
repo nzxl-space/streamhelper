@@ -98,12 +98,11 @@ const httpServer = createServer(app);
                         let user = result[0],
                             activity = discordUser.presence.activities.filter(x => x.name == "osu!");
 
-                        if(await !liveStatus(user.twitch)) {
+                        if(await liveStatus(user.twitch) == false) {
                             if(twitchClient.getChannels().includes(`#${user.twitch}`)) {
                                 twitchClient.part(`#${user.twitch}`);
                                 console.log(`Left channel #${user.twitch}`);
                             }
-                            return;
                         } else {
                             if(!twitchClient.getChannels().includes(`#${user.twitch}`)) {
                                 twitchClient.join(`#${user.twitch}`);
@@ -115,7 +114,7 @@ const httpServer = createServer(app);
                             currentlyPlaying[`#${user.twitch}`] = {
                                 name: "yanaginagi - Haru Modoki [Spring]",
                                 mapData: await lookupBeatmap("yanaginagi - Haru Modoki [Spring]"),
-                                previousMap: "http://osu.ppy.sh/beatmaps/821070"
+                                previousMap: "https://osu.ppy.sh/beatmaps/821070"
                             }
 
                         if(activity.length >= 1 && activity[0].details != null) {
@@ -126,7 +125,7 @@ const httpServer = createServer(app);
                                 });
                             }
                             
-                            if(activity[0].details) {
+                            if(activity[0].details && currentlyPlaying[`#${user.twitch}`].name != activity[0].details) {
                                 currentlyPlaying[`#${user.twitch}`] = {
                                     name: activity[0].details,
                                     mapData: await lookupBeatmap(activity[0].details),
@@ -137,7 +136,7 @@ const httpServer = createServer(app);
                     });
                 });
             }
-        }, 30*1000);
+        }, 5*1000);
     });
 
     twitchClient.connect();
@@ -146,7 +145,7 @@ const httpServer = createServer(app);
         if(twitchClient.listeners("message").length <= 0) {
             twitchClient.on("message", async (channel, tags, message, self) => {
                 if(message.startsWith("!np")) {
-                    if(currentlyPlaying[`#${user.twitch}`])
+                    if(currentlyPlaying[`${channel}`])
                         twitchClient.say(channel, `${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${currentlyPlaying[`${channel}`].mapData.url} - Previous Map: ${currentlyPlaying[`${channel}`].previousMap}`);
                     return;
                 }
@@ -164,6 +163,7 @@ const httpServer = createServer(app);
 
                     db.collection("users").find({ twitch: channel.replace("#", "") }).toArray(async (err, result) => {
                         if(err || result && result.length <= 0) return;
+                        if(result[0].osu == null) return;
                         banchoClient.getUser(result[0].osu).sendMessage(`${tags["username"]} » [https://osu.ppy.sh/b/${map[0].beatmapId} ${map[0].artist} ${map[0].title} [${map[0].version}]] ${mods ? `+${mods.join("").toUpperCase()}` : "+NM"} | ${moment(map[0].totalLength*1000).format("mm:ss")} - ★ ${Math.round(map[0].difficultyRating * 100) / 100} - AR${map[0].approachRate}`);
                     });
                 }
