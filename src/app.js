@@ -279,13 +279,13 @@ function lookupBeatmap(beatmapName) {
             result = await result.json();
             for(let i in result.beatmapsets) {
                 let map = result.beatmapsets[i],
-                    artist = beatmapName.match(/\w+/)[0],
+                    artist = beatmapName.match(/^(.*?)\s-\s(.*?)$/)[1],
                     version = beatmapName.match(/(?!.*\[)(?<=\[).+?(?=\])/)[0];
 
                 if(!map)
                     return reject("No map found");
 
-                if(map.artist.match(/\w+/)[0] == artist) {
+                if(map.artist == artist) {
                     let foundMap = map.beatmaps.find(m => m.version == version);
                     if(foundMap) {
                         resolve(foundMap);
