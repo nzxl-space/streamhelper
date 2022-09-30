@@ -98,6 +98,26 @@ const httpServer = createServer(app);
                         let user = result[0],
                             activity = discordUser.presence.activities.filter(x => x.name == "osu!");
 
+                        if(await !liveStatus(user.twitch)) {
+                            if(twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                                twitchClient.part(`#${user.twitch}`);
+                                console.log(`Left channel #${user.twitch}`);
+                            }
+                            return;
+                        } else {
+                            if(!twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                                twitchClient.join(`#${user.twitch}`);
+                                console.log(`Listening for requests on #${user.twitch}`);
+                            }
+                        }
+
+                        if(!currentlyPlaying[`#${user.twitch}`])
+                            currentlyPlaying[`#${user.twitch}`] = {
+                                name: "yanaginagi - Haru Modoki [Spring]",
+                                mapData: await lookupBeatmap("yanaginagi - Haru Modoki [Spring]"),
+                                previousMap: "http://osu.ppy.sh/beatmaps/821070"
+                            }
+
                         if(activity.length >= 1 && activity[0].details != null) {
                             if(user.osu == null) {
                                 let osuUsername = activity[0].assets.largeText.match(/^\w+/);
@@ -105,21 +125,13 @@ const httpServer = createServer(app);
                                     if(err || !result) return;
                                 });
                             }
-
-                            if(!twitchClient.getChannels().includes(`#${user.twitch}`) && await liveStatus(user.twitch) == true) {
-                                twitchClient.join(`#${user.twitch}`);
-                                console.log(`Listening for requests on #${user.twitch}`);
-                            }
                             
                             if(activity[0].details) {
-                                currentlyPlaying[`#${user.twitch}`] = {};
-                                currentlyPlaying[`#${user.twitch}`].name = activity[0].details;
-                                currentlyPlaying[`#${user.twitch}`].mapData = await lookupBeatmap(activity[0].details);
-                            }
-                        } else {
-                            if(twitchClient.getChannels().includes(`#${user.twitch}`) && await liveStatus(user.twitch) == false) {
-                                twitchClient.part(`#${user.twitch}`);
-                                console.log(`Left channel #${user.twitch}`);
+                                currentlyPlaying[`#${user.twitch}`] = {
+                                    name: activity[0].details,
+                                    mapData: await lookupBeatmap(activity[0].details),
+                                    previousMap: currentlyPlaying[`#${user.twitch}`].mapData.url
+                                }
                             }
                         }
                     });
@@ -134,7 +146,8 @@ const httpServer = createServer(app);
         if(twitchClient.listeners("message").length <= 0) {
             twitchClient.on("message", async (channel, tags, message, self) => {
                 if(message.startsWith("!np")) {
-                    twitchClient.say(channel, `${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${currentlyPlaying[`${channel}`].mapData.url}`);
+                    if(currentlyPlaying[`#${user.twitch}`])
+                        twitchClient.say(channel, `${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${currentlyPlaying[`${channel}`].mapData.url} - Previous Map: ${currentlyPlaying[`${channel}`].previousMap}`);
                     return;
                 }
 
@@ -234,7 +247,7 @@ function liveStatus(channel) {
 }
 
 function lookupBeatmap(beatmapName) {
-    return new Promise(async (resolve) => {
+    return new Promise(async (resolve, reject) => {
         if(!osuApi.accessToken || (osuApi.expires-Math.floor(Date.now() / 1000)) <= 1000) {
             await fetch(`https://osu.ppy.sh/oauth/token`, {
                 method: "POST",
@@ -268,6 +281,9 @@ function lookupBeatmap(beatmapName) {
                 let map = result.beatmapsets[i],
                     artist = beatmapName.match(/\w+/)[0],
                     version = beatmapName.match(/(?!.*\[)(?<=\[).+?(?=\])/)[0];
+
+                if(!map)
+                    return reject("No map found");
 
                 if(map.artist.match(/\w+/)[0] == artist) {
                     let foundMap = map.beatmaps.find(m => m.version == version);
