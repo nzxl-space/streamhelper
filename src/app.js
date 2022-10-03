@@ -6,7 +6,7 @@ const Regex = {
 };
 const moment = require("moment");
 const path = require("path");
-const fetch = require("node-fetch");
+const fetch = require("node-fetch-retry");
 
 require("dotenv").config();
 require("log-prefix")(() => { return `[nzxl.space | ${moment(Date.now()).format("HH:mm:ss")}]`; });
@@ -235,7 +235,9 @@ function liveStatus(channel) {
     return new Promise(async (resolve) => {
         if(!twitchApi.accessToken || (twitchApi.expires-Math.floor(Date.now() / 1000)) <= 1000) {
             await fetch(`https://id.twitch.tv/oauth2/token?client_id=${process.env.TWITCH_CLIENT_ID}&client_secret=${process.env.TWITCH_CLIENT_SECRET}&grant_type=client_credentials`, { 
-                method: "POST"
+                method: "POST",
+                retry: 3,
+                pause: 5000
             }).then(async result => {
                 result = await result.json();
                 twitchApi.accessToken = result.access_token;
@@ -250,7 +252,9 @@ function liveStatus(channel) {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${twitchApi.accessToken}`,
                 "Client-Id": process.env.TWITCH_CLIENT_ID
-            }
+            },
+            retry: 3,
+            pause: 5000
         }).then(async result => {
             result = await result.json();
             resolve(result.data.length >= 1 ? true : false);
@@ -272,7 +276,9 @@ function lookupBeatmap(beatmapName) {
                 headers: {
                     "Accept": "application/json",
                     "Content-Type": "application/json"
-                }
+                },
+                retry: 3,
+                pause: 5000
             }).then(async result => {
                 result = await result.json();
                 osuApi.accessToken = result.access_token;
@@ -286,7 +292,9 @@ function lookupBeatmap(beatmapName) {
                 "Authorization": `Bearer ${osuApi.accessToken}`,
                 "Content-Type": "application/json",
                 "Accept": "application/json"
-            }
+            },
+            retry: 3,
+            pause: 5000
         }).then(async result => {
             result = await result.json();
             for(let i in result.beatmapsets) {
