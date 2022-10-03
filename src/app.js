@@ -87,6 +87,12 @@ const httpServer = createServer(app);
         console.log(`Discord connected as ${discordClient.user.tag}!`);
         discordClient.user.setPresence({ activities: [{ name: "osu!", type: "PLAYING" }], status: "dnd" });
 
+        discordClient.on("guildMemberRemove", async (member) => {
+            await db.collection("users").deleteOne({ userId: member.id });
+            if(discordUsers.indexOf(member.id) > -1)
+                discordUsers.splice(discordUsers.indexOf(member.id), 1);
+        });
+
         var running = false;
         setInterval(async () => {
             if(running) return;
@@ -140,8 +146,8 @@ const httpServer = createServer(app);
                     });
                 });
 
-                await new Promise(p => setTimeout(p, (i+1)*2*1000));
-                if((i+1) == discordUsers.length) running = false;
+                await new Promise(p => setTimeout(p, (i+1)*1000));
+                if((i+1) >= discordUsers.length) running = false;
             }
         }, 5*1000);
     });
