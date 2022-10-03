@@ -87,7 +87,11 @@ const httpServer = createServer(app);
         console.log(`Discord connected as ${discordClient.user.tag}!`);
         discordClient.user.setPresence({ activities: [{ name: "osu!", type: "PLAYING" }], status: "dnd" });
 
-        setInterval(() => {
+        var running = false;
+        setInterval(async () => {
+            if(running) return;
+            running = true;
+
             for(let i = 0; i < discordUsers.length; i++) {
                 discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache
                 .filter(x => x.id == discordUsers[i])
@@ -135,6 +139,9 @@ const httpServer = createServer(app);
                         }
                     });
                 });
+
+                await new Promise(p => setTimeout(p, (i+1)*2*1000));
+                if((i+1) == discordUsers.length) running = false;
             }
         }, 5*1000);
     });
@@ -189,27 +196,32 @@ const httpServer = createServer(app);
                 }).then((data) => {
                     if(!data || data && !data["access_token"]) return;
     
-                    oauth.getUser(data.access_token).then(async (user) => {
-                        await oauth.addMember({
+                    oauth.getUser(data.access_token).then((user) => {
+                        oauth.addMember({
                             accessToken: data.access_token,
                             botToken: process.env.DISCORD_TOKEN,
                             guildId: process.env.DISCORD_GUILD,
                             userId: user.id
-                        });
+                        }).then(() => {
+                            oauth.getUserConnections(data.access_token).then((c) => {
+                                db.collection("users").find({ userId: user.id }).toArray((err, result) => {
+                                    if(err || result.length <= 0) {
+                                        let twitch = c.filter(x => x.type == "twitch");
+                                        if(twitch.length <= 0) return discordClient.guilds.cache.get(process.env.DISCORD_GUILD)
+                                        .members.cache.get(user.id)
+                                        .send("Twitch channel not found. Did you link it correctly with Discord? Try again when you linked it by re-authorizing! :)");
     
-                        oauth.getUserConnections(data.access_token).then((c) => {
-                            db.collection("users").find({ userId: user.id }).toArray((err, result) => {
-                                if(err || result.length <= 0) {
-                                    db.collection("users").insertOne({
-                                        userId: user.id,
-                                        discordName: `${user.username}#${user.discriminator}`,
-                                        twitch: `${c.filter(x => x.type == "twitch")[0].name}`,
-                                        osu: null
-                                    });
-                                    discordUsers.push(user.id);
-                                }
+                                        db.collection("users").insertOne({
+                                            userId: user.id,
+                                            discordName: `${user.username}#${user.discriminator}`,
+                                            twitch: `${twitch[0].name}`,
+                                            osu: null
+                                        });
+                                        discordUsers.push(user.id);
+                                    }
+                                });
                             });
-                        });
+                        }).catch((err) => err);
                     });
                 });
             }
