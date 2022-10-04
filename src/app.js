@@ -213,7 +213,7 @@ const httpServer = createServer(app);
                 }
 
                 message = message.split(" ");
-                let command = message[0].startsWith("!") ? message.splice(0, 1) : null;
+                let command = message[0].startsWith("!") ? message.splice(0, 1).join("") : null;
                 switch (command) {
                     case "!np":
                         if(currentlyPlaying[`${channel}`]) {
@@ -223,7 +223,7 @@ const httpServer = createServer(app);
                         break;
                     case "!nppp":
                         if(currentlyPlaying[`${channel}`]) {
-                            twitchClient.say(channel, `${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | 98%: ${currentlyPlaying[`${channel}`]}.ppData.A - 99%: ${currentlyPlaying[`${channel}`]}.ppData.S - 100%: ${currentlyPlaying[`${channel}`]}.ppData.X | ${currentlyPlaying[`${channel}`].mapData.url}`);
+                            twitchClient.say(channel, `${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | 98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp | ${currentlyPlaying[`${channel}`].mapData.url}`);
                             if(debug) console.log(`Sent !nppp to ${channel}`);
                         }
                         break;
@@ -235,12 +235,12 @@ const httpServer = createServer(app);
                         break;
                     case "!lastpp":
                         if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap) {
-                            twitchClient.say(channel, `${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | 98%: ${currentlyPlaying[`${channel}`]}.previousMap.ppData.A - 99%: ${currentlyPlaying[`${channel}`]}.previousMap.ppData.S - 100%: ${currentlyPlaying[`${channel}`]}.previousMap.ppData.X | ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
+                            twitchClient.say(channel, `${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | 98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp | ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
                             if(debug) console.log(`Sent !lastpp to ${channel}`);
                         }
                         break;
                     case "!help":
-                        twitchClient.say(channel, "!np - Show currently playing map | !nppp - Show currently playing map and pp values | !last - Show previously played map | !lastpp - Show previously played map and pp values");
+                        twitchClient.say(channel, "| !np - Show currently playing map | !nppp - Show currently playing map and pp values | !last - Show previously played map | !lastpp - Show previously played map and pp values |");
                         if(debug) console.log(`Sent !help to ${channel}`);
                         break;
                 }
