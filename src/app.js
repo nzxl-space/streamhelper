@@ -5,7 +5,7 @@ const Regex = {
     setId: /(?<=#osu\/|\/s\/)\d+/g,
     setIdBancho: /(?<=#\/|\/s\/)\d+/g,
     beatmapId: /(?<=beatmapsets\/|b\/)\d+/g,
-    beatmapMods: /(NF|EZ|HD|HR|(SD|PF)|(NC|DT)|RX|HT|FL|SO)/ig
+    beatmapMods: /(?<=\+)(?:NF|EZ|HD|HR|(SD|PF)|(NC|DT)|RX|HT|FL|SO)+/ig
 };
 const moment = require("moment");
 const path = require("path");
@@ -193,7 +193,7 @@ const httpServer = createServer(app);
                 if(debug) console.log(`New message from ${channel}`);
                 let beatmapId = message.match(Regex.beatmapId),
                     setId = message.match(Regex.setId),
-                    mods = message.replace(/http|https/g, "").match(Regex.beatmapMods);
+                    mods = message.match(Regex.beatmapMods);
 
                 if(beatmapId) {
                     let map = await banchoClient.osuApi.beatmaps.getBySetId(beatmapId[0]);
@@ -205,7 +205,7 @@ const httpServer = createServer(app);
                     db.collection("users").find({ twitch: channel.replace("#", "") }).toArray(async (err, result) => {
                         if(err || result && result.length <= 0) return;
                         if(result[0].osu == null) return;
-                        banchoClient.getUser(result[0].osu).sendMessage(`${tags["username"]} » [https://osu.ppy.sh/b/${map[0].beatmapId} ${map[0].artist} ${map[0].title} [${map[0].version}]] ${mods ? `+${mods.join("").toUpperCase()}` : "+NM"} | ${moment(map[0].totalLength*1000).format("mm:ss")} - ★ ${Math.round(map[0].difficultyRating * 100) / 100} - AR${map[0].approachRate}`);
+                        banchoClient.getUser(result[0].osu).sendMessage(`${tags["username"]} » [https://osu.ppy.sh/b/${map[0].beatmapId} ${map[0].artist} - ${map[0].title} [${map[0].version}]] ${mods ? `+${mods.toString().toUpperCase()}` : ""} | ${moment(map[0].totalLength*1000).format("mm:ss")} - ★ ${Math.round(map[0].difficultyRating * 100) / 100} - AR${map[0].approachRate}`);
                         if(debug) console.log(`Beatmap request sent to ${result[0].osu}`);
                     });
 
