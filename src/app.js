@@ -373,14 +373,17 @@ function lookupBeatmap(beatmapName) {
             result = await result.json();
             for(let i in result.beatmapsets) {
                 let map = result.beatmapsets[i],
-                    artist = beatmapName.match(/^(.*?)\s-\s(.*?)$/)[1],
-                    version = beatmapName.match(/(?!.*\[)(?<=\[).+?(?=\])/)[0];
+                    artist = beatmapName.match(/^(.*?)\s-\s(.*?)$/),
+                    version = beatmapName.match(/(?!.*\[)(?<=\[).+?(?=\])/);
 
-                if(!map)
-                    return reject("No map found");
+                if(!map || !version || !artist)
+                    return reject(); //"No map found"
 
-                if(map.artist == artist) {
-                    let foundMap = map.beatmaps.find(m => m.version == version);
+                if(version && version.length <= 0 || artist && artist.length <= 0)
+                    return reject(); //"No match found"
+
+                if(map.artist == artist[1]) {
+                    let foundMap = map.beatmaps.find(m => m.version == version[0]);
                     if(foundMap) {
                         if(debug) console.log(`Found map on lookup: ${foundMap.id}`);
                         resolve(foundMap);
