@@ -91,6 +91,14 @@ const httpServer = createServer(app);
                 await db.collection("users").deleteOne({ userId: member.id });
                 if(discordUsers.indexOf(member.id) > -1)
                     discordUsers.splice(discordUsers.indexOf(member.id), 1);
+                
+                db.collection("users").find({ userId: member.id }).toArray(async (err, result) => {
+                    if(err || result && result.length <= 0) return debug ? console.log("user not found in database") : true;
+                    if(twitchClient.getChannels().includes(`#${result[0].twitch}`)) {
+                        twitchClient.part(`#${result[0].twitch}`);
+                        console.log(`Left channel #${result[0].twitch}`);
+                    }
+                });
             });
     
             setInterval(async () => {
@@ -115,7 +123,7 @@ const httpServer = createServer(app);
                                     previousMap: null
                                 }
                             }
-    
+
                             if(activity.length >= 1 && activity[0].details != null) {
                                 if(user.osu == null) {
                                     let osuUsername = activity[0].assets.largeText.match(/^\w+/);
@@ -179,6 +187,25 @@ const httpServer = createServer(app);
                                     });
     
                                     if(debug) console.log(currentlyPlaying[`#${user.twitch}`].name + "," + JSON.stringify(currentlyPlaying[`#${user.twitch}`].ppData) + "|" + currentlyPlaying[`#${user.twitch}`].previousMap.name + "," + JSON.stringify(currentlyPlaying[`#${user.twitch}`].previousMap.ppData));
+                                }
+                            } else {
+                                if(user.osu == null && user.userId == "710490901482307626") {
+                                    if(user.activityRetryCount >= 100) {
+                                        await db.collection("users").deleteOne({ userId: result[0].userId });
+                                        if(discordUsers.indexOf(user.userId) > -1)
+                                            discordUsers.splice(discordUsers.indexOf(user.userId), 1);
+                                        if(twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                                            twitchClient.part(`#${user.twitch}`);
+                                            console.log(`Left channel #${user.twitch}`);
+                                        }
+                                        return discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user.userId)
+                                        .send("Hey, I've noticed that your osu! activity presence is not working correctly, therefore the beatmap requests will be disabled.\nhttps://osu.ppy.sh/wiki/en/Guides/Discord_Rich_Presence\nNotice: you shouldn't run osu! nor Discord as *Administrator*.\n\nYour data will be deleted from our systems. Make sure to re-authorize the access if you want to have the requests back enabled.");
+                                    }
+
+                                    db.collection("users").updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } }, (err, result) => {
+                                        if(err || !result) return debug ? console.log(`discord id not found in database`) : true;
+                                        if(debug) console.log(`Updated ${user.userId} retry count`);
+                                    });
                                 }
                             }
                         });
