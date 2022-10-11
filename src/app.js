@@ -8,7 +8,10 @@ const Regex = {
 const moment = require("moment");
 const path = require("path");
 const fetch = require("node-fetch-retry");
+const FormData = require("form-data");
+const fs = require("fs");
 const currentlyPlaying = {};
+const awaitingVideo = {};
 
 require("dotenv").config();
 require("log-prefix")(() => { return `[nzxl.space | ${moment(Date.now()).format("HH:mm:ss")}]`; });
@@ -64,7 +67,12 @@ app.set("views", path.join(__dirname, "static"));
 app.use(express.static(path.join(__dirname, "static")));
 const httpServer = createServer(app);
 
-(() => {
+// Websocket o!rdr
+const socketUrl = "https://ordr-ws.issou.best";
+const io = require("socket.io-client");
+const ioClient = io.connect(socketUrl);
+
+(async () => {
     let activeUsers, users, mapData;
     mongoClient.connect(async err => {
         if(err) return console.log("MongoDB failed!");
@@ -270,6 +278,14 @@ const httpServer = createServer(app);
             res.send("<script>window.close()</script>");
         });
     });
+
+    ioClient.on("connect", () => console.log("[o!rdr] Connected to server!"));
+    ioClient.on("render_done_json", data => {
+        if(`${data.renderID}` in awaitingVideo) {
+            awaitingVideo[`${data.renderID}`].done = Date.now();
+            awaitingVideo[`${data.renderID}`].url = data.videoUrl;
+        }
+    });
 })();
 
 function liveStatus(channel) {
@@ -374,5 +390,49 @@ function toggleChannel(twitch, state) {
         }
 
         resolve();
+    });
+}
+
+function renderReplay(username, replay) {
+    return new Promise(resolve => {
+        var replayForm = new FormData();
+        replayForm.append("replayFile", replay);
+        replayForm.append("username", username);
+        replayForm.append("resolution", "1280x720");
+        replayForm.append("verificationKey", process.env.OSURENDER);
+
+        // Danser Settigns
+        replayForm.append("skin", "1695");
+        replayForm.append("customSkin", "true");
+        replayForm.append("globalVolume", "50");
+        replayForm.append("musicVolume", "50");
+        replayForm.append("hitsoundVolume", "75");
+        replayForm.append("useSkinColors", "true");
+        replayForm.append("useBeatmapColors", "false");
+        replayForm.append("introBGDim", "90");
+        replayForm.append("inGameBGDim", "90");
+        replayForm.append("breakBGDim", "90");
+        replayForm.append("showDanserLogo", "false");
+        replayForm.append("cursorRipples", "true");
+        replayForm.append("cursorSize", "0.75");
+        replayForm.append("sliderSnakingIn", "false");
+        replayForm.append("showHitCounter", "true");
+        replayForm.append("showAimErrorMeter", "true");
+
+        fetch("https://apis.issou.best/ordr/renders", {
+            method: "POST",
+            body: replayForm
+        }).then(async result => {
+            result = await result.json();
+            awaitingVideo[`${result.renderID}`] = { url: null, done: 0, username: username };
+
+            console.log(`[o!rdr] Waiting for video (${result.renderID}) to render..`);
+            while (!awaitingVideo[`${result.renderID}`].url) {
+                await new Promise(p => setTimeout(p, 5000));
+            }
+
+            console.log(`[o!rdr] ${awaitingVideo[`${result.renderID}`].url} (${result.renderID}) done!`);
+            resolve(awaitingVideo[`${result.renderID}`].url);
+        });
     });
 }
