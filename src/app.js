@@ -1,5 +1,3 @@
-var debug = false;
-
 // Utils
 const Regex = {
     setId: /(?<=#osu\/|\/s\/)\d+/g,
@@ -10,6 +8,7 @@ const Regex = {
 const moment = require("moment");
 const path = require("path");
 const fetch = require("node-fetch-retry");
+const currentlyPlaying = {};
 
 require("dotenv").config();
 require("log-prefix")(() => { return `[nzxl.space | ${moment(Date.now()).format("HH:mm:ss")}]`; });
@@ -17,7 +16,7 @@ process.on("unhandledRejection", error => console.error(error));
 
 // MongoDB
 const { MongoClient, ServerApiVersion } = require("mongodb");
-const mongoClient = new MongoClient(process.env.MONGODB, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+const mongoClient = new MongoClient(process.env.MONGODB, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1, monitorCommands: true });
 
 // tmi.js
 const tmi = require("tmi.js");
@@ -66,12 +65,14 @@ app.use(express.static(path.join(__dirname, "static")));
 const httpServer = createServer(app);
 
 (() => {
-    let db, discordUsers, currentlyPlaying = {};
+    let activeUsers, users, mapData;
     mongoClient.connect(async err => {
         if(err) return console.log("MongoDB failed!");
-
         db = mongoClient.db("osu");
-        discordUsers = await db.collection("users").distinct("userId");
+
+        users = db.collection("users");
+        mapData = db.collection("map_data");
+        activeUsers = await users.distinct("userId");
 
         console.log("MongoDB connected!");
     });
@@ -88,103 +89,87 @@ const httpServer = createServer(app);
 
         if(discordClient.listeners("guildMemberRemove").length <= 0) {
             discordClient.on("guildMemberRemove", async (member) => {
-                await db.collection("users").deleteOne({ userId: member.id });
-                if(discordUsers.indexOf(member.id) > -1)
-                    discordUsers.splice(discordUsers.indexOf(member.id), 1);
+                users.findOne({ userId: member.id }).then(async (user) => {
+                    await toggleChannel(user.twitch, false);
+                    users.deleteOne({ userId: user.id });
+                    if(activeUsers.indexOf(user.id) > -1) activeUsers.splice(activeUsers.indexOf(user.id), 1);
+                });
             });
-    
-            setInterval(async () => {
-                for(let i = 0; i < discordUsers.length; i++) {
-                    discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.filter(x => x.id == discordUsers[i]).map(discordUser => {
-                        if(!discordUser.presence || discordUser.presence && discordUser.presence.activities.length <= 0) return;
 
-                        db.collection("users").find({ userId: discordUsers[i] }).toArray(async (err, result) => {
-                            if(err || result && result.length <= 0) return debug ? console.log("discordUser not found in database") : true;
-                            let user = result[0], activity = discordUser.presence.activities.filter(x => x.name == "osu!");
-    
-                            if(!currentlyPlaying[`#${user.twitch}`]) {
-                                let score = await pp.calculate({ beatmapId: 673086 });
-                                currentlyPlaying[`#${user.twitch}`] = {
-                                    name: "yanaginagi - Haru Modoki [Spring]",
-                                    mapData: await lookupBeatmap("yanaginagi - Haru Modoki [Spring]"),
+            discordClient.on("presenceUpdate", (_old, _new) => {
+                if(!activeUsers.includes(_new.userId) || _new.guild.id !== process.env.DISCORD_GUILD) return;
+
+                let activity = _new.activities.filter(a => a.applicationId == "367827983903490050"); // osu!
+                if(!activity || activity && activity.length <= 0) return;
+
+                users.findOne({ userId: _new.userId }).then(async (user) => {
+                    matchedUsername = activity[0].assets.largeText.match(/^\w+/);
+
+                    if(user.osu == null && matchedUsername.length >= 1) {
+                        await users.updateOne({ userId: user.userId }, { $set: { osu: matchedUsername[0] }});
+                    } else if(user.osu == null && matchedUsername.length <= 0) {
+                        if(user.activityRetryCount >= 10) {
+                            await users.deleteOne({ userId: user.userId });
+                            return discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user.userId).send("Hey, I've noticed that your osu! activity presence is not working correctly, therefore the beatmap requests will be disabled.\nhttps://osu.ppy.sh/wiki/en/Guides/Discord_Rich_Presence\nNotice: you shouldn't run osu! nor Discord as *Administrator*.\n\nAny data containing your info will be wiped from our systems. Make sure to re-authorize the access if you want to have the requests back enabled.");    
+                        }
+
+                        return await users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
+                    }
+
+                    let mapName = activity[0].details;
+                    if(!mapName) return;
+
+                    if(!currentlyPlaying[`#${user.twitch}`] || currentlyPlaying[`#${user.twitch}`].name != mapName) {
+                        mapData.findOne({ name: mapName }).then(async (map) => {
+                            if(!map || map && map.length <= 0) {
+                                map = await lookupBeatmap(mapName);
+                                map.score = await pp.calculate({ beatmapId: map.id });
+
+                                mapData.insertOne({
+                                    name: mapName,
+                                    setId: map.id,
+                                    mapData: map,
                                     ppData: {
-                                        A: Math.round(score.performance[0].totalPerformance),
-                                        S: Math.round(score.performance[1].totalPerformance),
-                                        X: Math.round(score.performance[2].totalPerformance)
-                                    },
-                                    previousMap: null
-                                }
-                            }
-    
-                            if(activity.length >= 1 && activity[0].details != null) {
-                                if(user.osu == null) {
-                                    let osuUsername = activity[0].assets.largeText.match(/^\w+/);
-                                    db.collection("users").updateOne({ userId: discordUsers[i] }, { $set: { osu: osuUsername[0] } }, (err, result) => {
-                                        if(err || !result) return debug ? console.log(`discord id with osu username ${osuUsername[0]} not found in database`) : true;
-                                        if(debug) console.log(`Updated ${osuUsername[0]} database record`);
-                                    });
-                                }
-                                
-                                if(activity[0].details && currentlyPlaying[`#${user.twitch}`].name != activity[0].details) {
-                                    let map = await lookupBeatmap(activity[0].details);
-                                    let score = await pp.calculate({ beatmapId: map.id });
-    
-                                    currentlyPlaying[`#${user.twitch}`] = {
-                                        name: activity[0].details,
-                                        mapData: map,
-                                        ppData: {
-                                            A: Math.round(score.performance[0].totalPerformance),
-                                            S: Math.round(score.performance[1].totalPerformance),
-                                            X: Math.round(score.performance[2].totalPerformance)
-                                        },
-                                        previousMap: currentlyPlaying[`#${user.twitch}`]
+                                        A: Math.round(map.score.performance[0].totalPerformance),
+                                        S: Math.round(map.score.performance[1].totalPerformance),
+                                        X: Math.round(map.score.performance[2].totalPerformance)
                                     }
-    
-                                    db.collection("map_data").find({ setId: map.id }).toArray((err, result) => {
-                                        if(err) return debug ? console.log("Error occured while trying to find map id") : true;
-                                        if(result && result.length >= 1) {
-                                            if(result[0].ppData.A != currentlyPlaying[`#${user.twitch}`].ppData.A || result[0].ppData.S != currentlyPlaying[`#${user.twitch}`].ppData.S || result[0].ppData.X != currentlyPlaying[`#${user.twitch}`].ppData.X) {
-                                                db.collection("map_data").updateOne({ setId: map.id }, { $set: { ppData: currentlyPlaying[`#${user.twitch}`].ppData } }, (err, result) => {
-                                                    if(err || !result) return console.log(`Failed to update ${map.id}`);
-                                                    if(debug) console.log(`Updated ${map.id} from map_data`);
-                                                });
-                                            }
-    
-                                            return;
-                                        }
-    
-                                        db.collection("map_data").insertOne({
-                                            setId: map.id,
-                                            mapData: currentlyPlaying[`#${user.twitch}`].mapData,
-                                            ppData: currentlyPlaying[`#${user.twitch}`].ppData
-                                        }).then(() => {
-                                            discordClient.guilds.cache.get(process.env.DISCORD_GUILD).channels.cache.find(x => x.name == "events").send({ embeds: [
-                                                new MessageEmbed()
-                                                .setColor("#FD7CB6")
-                                                .setTitle(`${currentlyPlaying[`#${user.twitch}`].name}`)
-                                                .setURL(`https://osu.ppy.sh/beatmaps/${map.id}`)
-                                                .setDescription(`mapped by ${currentlyPlaying[`#${user.twitch}`].mapData.creator} | ${moment(currentlyPlaying[`#${user.twitch}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`#${user.twitch}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`#${user.twitch}`].mapData.ar}`)
-                                                .setAuthor({ name: `A new map has been added to the database!`, iconURL: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Osu%21_Logo_2016.svg/1024px-Osu%21_Logo_2016.svg.png" })
-                                                .addFields(
-                                                    { name: "98% FC", value: `${currentlyPlaying[`#${user.twitch}`].ppData.A}pp`, inline: true },
-                                                    { name: "99% FC", value: `${currentlyPlaying[`#${user.twitch}`].ppData.S}pp`, inline: true },
-                                                    { name: "100% FC", value: `${currentlyPlaying[`#${user.twitch}`].ppData.X}pp`, inline: true }
-                                                )
-                                                .setImage(`https://assets.ppy.sh/beatmaps/${map.beatmapset_id}/covers/cover.jpg`)
-                                                .setTimestamp()
-                                            ]});
-                                        });
-    
-                                        if(debug) console.log(`Insert ${map.id} into map_data`);
-                                    });
-    
-                                    if(debug) console.log(currentlyPlaying[`#${user.twitch}`].name + "," + JSON.stringify(currentlyPlaying[`#${user.twitch}`].ppData) + "|" + currentlyPlaying[`#${user.twitch}`].previousMap.name + "," + JSON.stringify(currentlyPlaying[`#${user.twitch}`].previousMap.ppData));
-                                }
+                                }).then(() => {
+                                    discordClient.guilds.cache.get(process.env.DISCORD_GUILD).channels.cache.find(x => x.name == "events").send({ embeds: [
+                                        new MessageEmbed()
+                                        .setColor("#FD7CB6")
+                                        .setTitle(`${mapName}`)
+                                        .setURL(`https://osu.ppy.sh/beatmaps/${map.id}`)
+                                        .setDescription(`mapped by ${map.creator} | ${moment(map.total_length*1000).format("mm:ss")} - ★ ${Math.round(map.difficulty_rating * 100) / 100} - AR${map.ar}`)
+                                        .setAuthor({ name: `A new map has been added to the database!`, iconURL: `https://i.imgur.com/NJt4fjH.png` })
+                                        .addFields(
+                                            { name: "98% FC", value: `${Math.round(map.score.performance[0].totalPerformance)}pp`, inline: true },
+                                            { name: "99% FC", value: `${Math.round(map.score.performance[1].totalPerformance)}pp`, inline: true },
+                                            { name: "100% FC", value: `${Math.round(map.score.performance[2].totalPerformance)}pp`, inline: true }
+                                        )
+                                        .setImage(`https://assets.ppy.sh/beatmaps/${map.beatmapset_id}/covers/cover.jpg`)
+                                        .setTimestamp()
+                                    ]});
+                                });
                             }
+
+                            currentlyPlaying[`#${user.twitch}`] = {
+                                name: mapName,
+                                mapData: map.mapData,
+                                ppData: {
+                                    A: map.score ? Math.round(map.score.performance[0].totalPerformance) : Math.round(map.ppData.A),
+                                    S: map.score ? Math.round(map.score.performance[1].totalPerformance) : Math.round(map.ppData.S),
+                                    X: map.score ? Math.round(map.score.performance[2].totalPerformance) : Math.round(map.ppData.X)
+                                },
+                                previousMap: currentlyPlaying[`#${user.twitch}`]
+                            }
+
+                            if(await liveStatus(user.twitch) == true) await toggleChannel(user.twitch, true);
+                            else await toggleChannel(user.twitch, false);
                         });
-                    });
-                }
-            }, 10*1000);
+                    }
+                });
+            });
         }
     });
 
@@ -192,33 +177,8 @@ const httpServer = createServer(app);
     twitchClient.on("connected", () => {
         console.log(`Twitch connected as ${process.env.TWITCH_USERNAME}!`);
         if(twitchClient.listeners("message").length <= 0) {
-            setInterval(() => {
-                for(let i = 0; i < discordUsers.length; i++) {
-                    db.collection("users").find({ userId: discordUsers[i] }).toArray(async (err, result) => {
-                        if(err || result && result.length <= 0) return debug ? console.log("discordUser not found in database") : true;
-                        let user = result[0];
-
-                        if(await liveStatus(user.twitch) == false) {
-                            if(twitchClient.getChannels().includes(`#${user.twitch}`)) {
-                                twitchClient.part(`#${user.twitch}`);
-                                console.log(`Left channel #${user.twitch}`);
-                            }
-                        } else {
-                            if(!twitchClient.getChannels().includes(`#${user.twitch}`)) {
-                                twitchClient.join(`#${user.twitch}`);
-                                console.log(`Listening for requests on #${user.twitch}`);
-                            }
-                        } 
-                    });
-                }
-            }, 5*60*1000);
-
             twitchClient.on("message", async (channel, tags, message, self) => {
-                if(debug) console.log(`New message from ${channel}`);
-                let beatmapId = message.match(Regex.beatmapId),
-                    setId = message.match(Regex.setId),
-                    mods = message.match(Regex.beatmapMods);
-
+                let beatmapId = message.match(Regex.beatmapId), setId = message.match(Regex.setId), mods = message.match(Regex.beatmapMods);
                 if(beatmapId) {
                     let map = await banchoClient.osuApi.beatmaps.getBySetId(beatmapId[0]);
                     if(!map || map.length <= 0) await banchoClient.osuApi.beatmaps.getByBeatmapId(beatmapId[0]);
@@ -226,11 +186,9 @@ const httpServer = createServer(app);
                     if(setId && map.length >= 1)
                         map = map.filter(x => x.id == setId);
 
-                    db.collection("users").find({ twitch: channel.replace("#", "") }).toArray(async (err, result) => {
-                        if(err || result && result.length <= 0) return;
-                        if(result[0].osu == null) return;
-                        banchoClient.getUser(result[0].osu).sendMessage(`${tags["username"]} » [https://osu.ppy.sh/b/${map[0].beatmapId} ${map[0].artist} - ${map[0].title} [${map[0].version}]] ${mods ? `+${mods.toString().toUpperCase()}` : ""} | ${moment(map[0].totalLength*1000).format("mm:ss")} - ★ ${Math.round(map[0].difficultyRating * 100) / 100} - AR${map[0].approachRate}`);
-                        if(debug) console.log(`Beatmap request sent to ${result[0].osu}`);
+                    users.findOne({ twitch: channel.replace("#", "") }).then(user => {
+                        if(!user || user && user.length <= 0 || user.osu == null) return;
+                        banchoClient.getUser(user.osu).sendMessage(`${tags["username"]} » [https://osu.ppy.sh/b/${map[0].beatmapId} ${map[0].artist} - ${map[0].title} [${map[0].version}]] ${mods ? `+${mods.toString().toUpperCase()}` : ""} | ${moment(map[0].totalLength*1000).format("mm:ss")} - ★ ${Math.round(map[0].difficultyRating * 100) / 100} - AR${map[0].approachRate}`);
                     });
 
                     return;
@@ -240,32 +198,23 @@ const httpServer = createServer(app);
                 let command = message[0].startsWith("!") ? message.splice(0, 1).join("") : null;
                 switch (command) {
                     case "!np":
-                        if(currentlyPlaying[`${channel}`]) {
+                        if(currentlyPlaying[`${channel}`])
                             twitchClient.say(channel, `${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${currentlyPlaying[`${channel}`].mapData.url}`);
-                            if(debug) console.log(`Sent !np to ${channel}`);
-                        }
                         break;
                     case "!nppp":
-                        if(currentlyPlaying[`${channel}`]) {
+                        if(currentlyPlaying[`${channel}`])
                             twitchClient.say(channel, `${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | 98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp | ${currentlyPlaying[`${channel}`].mapData.url}`);
-                            if(debug) console.log(`Sent !nppp to ${channel}`);
-                        }
                         break;
                     case "!last":
-                        if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap) {
+                        if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap)
                             twitchClient.say(channel, `${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
-                            if(debug) console.log(`Sent !last to ${channel}`);
-                        }
                         break;
                     case "!lastpp":
-                        if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap) {
+                        if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap)
                             twitchClient.say(channel, `${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | 98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp | ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
-                            if(debug) console.log(`Sent !lastpp to ${channel}`);
-                        }
                         break;
                     case "!help":
                         twitchClient.say(channel, "| !np - Show currently playing map | !nppp - Show currently playing map and pp values | !last - Show previously played map | !lastpp - Show previously played map and pp values |");
-                        if(debug) console.log(`Sent !help to ${channel}`);
                         break;
                 }
             });
@@ -298,21 +247,17 @@ const httpServer = createServer(app);
                             userId: user.id
                         }).then(() => {
                             oauth.getUserConnections(data.access_token).then((c) => {
-                                db.collection("users").find({ userId: user.id }).toArray((err, result) => {
-                                    if(err || result.length <= 0) {
+                                users.findOne({ userId: user.id }).then((result) => {
+                                    if(!result || result && result.length <= 0) {
                                         let twitch = c.filter(x => x.type == "twitch");
-                                        if(twitch.length <= 0) return discordClient.guilds.cache.get(process.env.DISCORD_GUILD)
-                                        .members.cache.get(user.id)
-                                        .send("Twitch channel not found. Did you link it correctly with Discord? Try again when you linked it by re-authorizing! :)");
-    
-                                        db.collection("users").insertOne({
+                                        if(twitch.length <= 0) return discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user.id).send("Twitch channel not found. Did you link it correctly with Discord? Try again when you linked it by re-authorizing! :)");
+                                        
+                                        users.insertOne({
                                             userId: user.id,
                                             discordName: `${user.username}#${user.discriminator}`,
                                             twitch: `${twitch[0].name}`,
                                             osu: null
-                                        });
-                                        discordUsers.push(user.id);
-                                        if(debug) console.log(`${user.id} registered to service`);
+                                        }).then(() => activeUsers.push(user.id));
                                     }
                                 });
                             });
@@ -337,7 +282,6 @@ function liveStatus(channel) {
                 result = await result.json();
                 twitchApi.accessToken = result.access_token;
                 twitchApi.expires = (Math.floor(Date.now() / 1000)+result.expires_in);
-                if(debug) console.log("twitchApi refreshed");
             });
         }
 
@@ -353,7 +297,6 @@ function liveStatus(channel) {
             pause: 5000
         }).then(async result => {
             result = await result.json();
-            if(debug) console.log(`${channel} liveStatus ${result.data.length >= 1 ? true : false}`);
             resolve(result.data.length >= 1 ? true : false);
         });
     });
@@ -380,7 +323,6 @@ function lookupBeatmap(beatmapName) {
                 result = await result.json();
                 osuApi.accessToken = result.access_token;
                 osuApi.expires = (Math.floor(Date.now() / 1000)+result.expires_in);
-                if(debug) console.log("osuApi refreshed");
             });
         }
 
@@ -409,12 +351,27 @@ function lookupBeatmap(beatmapName) {
                 if(map.artist == artist[1]) {
                     let foundMap = map.beatmaps.find(m => m.version == version[0]);
                     if(foundMap) {
-                        if(debug) console.log(`Found map on lookup: ${foundMap.id}`);
                         foundMap.creator = map.creator;
                         resolve(foundMap);
                     }
                 }
             }
         })
+    });
+}
+
+// false - leave channel
+// true - join channel
+function toggleChannel(twitch, state) {
+    return new Promise(resolve => {
+        if(twitchClient.getChannels().includes(`#${twitch}`) && state == false) {
+            twitchClient.part(`#${twitch}`);
+            console.log(`Left channel #${twitch}`);
+        } else if(!twitchClient.getChannels().includes(`#${twitch}`) && state == true) {
+            twitchClient.join(`#${twitch}`);
+            console.log(`Listening for requests on #${twitch}`);
+        }
+
+        resolve();
     });
 }
