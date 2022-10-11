@@ -2,8 +2,8 @@
 This is the open repository of osu.nzxl.space - A free to use, simple and powerful osu! beatmap request bot.
 
 # Usage
-Sign up at [osu.nzxl.space](https://osu.nzxl.space)
-This bot actively uses your Discord activity to grab important stuff e.g. the current playing map and osu! username.
+Sign up at [osu.nzxl.space](https://osu.nzxl.space)<br>
+This bot actively uses your Discord activity to grab important stuff e.g. the current playing map and osu! username.<br>
 Before authorizing the access, you should make sure that you've connected a Twitch account to your Discord account in order for the bot to join your chat.
 
 # Features
@@ -12,8 +12,9 @@ Commands:
 - !nppp - Show current playing map with Performance Values
 - !last - Show last playing map
 - !lastpp - Show last playing map with Performance Values
-_
+<br>
 Automatically grabs your stuff from the discord game activity = You don't need to run any other programs.
+<br>
 Just launch discord, start osu!game and enjoy.
 
 # Roadmap
@@ -30,8 +31,8 @@ Requirements:
 - NodeJS v16.15+
 
 ```
-- git clone https://github.com/nzxl-space/streamhelper
-- cd streamhelper && npm i
+$ git clone https://github.com/nzxl-space/streamhelper
+$ cd streamhelper && npm i
 ```
 
 Required Environment Variables:
@@ -57,9 +58,9 @@ DISCORD_REDIRECT_URI="<discord redirect url>"
 MONGODB="<mongodb connection string>"
 ```
 
-Startup the bot:
+After setting environment variables you can start the bot with:
 ```
-node .
+$ node .
 ```
 
 
