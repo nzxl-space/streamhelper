@@ -103,6 +103,7 @@ const httpServer = createServer(app);
                 if(!activity || activity && activity.length <= 0) return;
 
                 users.findOne({ userId: _new.userId }).then(async (user) => {
+                    if(!activity[0].assets.largeText) return;
                     matchedUsername = activity[0].assets.largeText.match(/^\w+/);
 
                     if(user.osu == null && matchedUsername.length >= 1) {
