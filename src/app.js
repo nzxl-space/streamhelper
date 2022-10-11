@@ -393,11 +393,11 @@ function toggleChannel(twitch, state) {
     });
 }
 
-function renderReplay(username, replay) {
+function renderReplay(replay) {
     return new Promise(resolve => {
         var replayForm = new FormData();
         replayForm.append("replayFile", replay);
-        replayForm.append("username", username);
+        replayForm.append("username", "streamhelper");
         replayForm.append("resolution", "1280x720");
         replayForm.append("verificationKey", process.env.OSURENDER);
 
