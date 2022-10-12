@@ -1,3 +1,5 @@
+process.noDeprecation = true;
+
 // Utils
 const Regex = {
     setId: /(?<=#osu\/|\/s\/)\d+/g,
@@ -9,7 +11,6 @@ const moment = require("moment");
 const path = require("path");
 const fetch = require("node-fetch-retry");
 const FormData = require("form-data");
-const fs = require("fs");
 const currentlyPlaying = {};
 const awaitingVideo = {};
 
@@ -72,7 +73,7 @@ const socketUrl = "https://ordr-ws.issou.best";
 const io = require("socket.io-client");
 const ioClient = io.connect(socketUrl);
 
-(async () => {
+(() => {
     let activeUsers, users, mapData;
     mongoClient.connect(async err => {
         if(err) return console.log("MongoDB failed!");
@@ -175,6 +176,28 @@ const ioClient = io.connect(socketUrl);
 
                             if(await liveStatus(user.twitch) == true) await toggleChannel(user.twitch, true);
                             else await toggleChannel(user.twitch, false);
+
+                            banchoClient.osuApi.user.getBest(user.osu).then(scores => {
+                                scores.forEach(score => {
+                                    if(score.replayAvailable) {
+                                        let date = moment(Date.now()).diff(score.date, "days");
+                                        if(date <= 3) {
+                                            users.findOne({ osu: user.osu }).then((user) => {
+                                                if(!user || user["replays"] && Object.keys(user.replays).includes(`${score.beatmapId}`)) return;
+                    
+                                                fetch(`${process.env.DOWNLOADURL}?userId=${score.userId}&beatmapId=${score.beatmapId}`).then(async replay => {
+                                                    let url = await renderReplay(replay.body, user.osu);
+                                                    users.updateOne({ userId: user.userId }, { $set: { [`replays.${score.beatmapId}`]: `${url}` }});
+                                                    
+                                                    if(twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                                                        twitchClient.say(`#${user.twitch}`, `/me A replay of your new top play is available here: ${url}`);
+                                                    }
+                                                });
+                                            });
+                                        }
+                                    }
+                                });
+                            });
                         });
                     }
                 });
@@ -208,22 +231,22 @@ const ioClient = io.connect(socketUrl);
                 switch (command) {
                     case "!np":
                         if(currentlyPlaying[`${channel}`])
-                            twitchClient.say(channel, `${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${currentlyPlaying[`${channel}`].mapData.url}`);
+                            twitchClient.say(channel, `/me ${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${currentlyPlaying[`${channel}`].mapData.url}`);
                         break;
                     case "!nppp":
                         if(currentlyPlaying[`${channel}`])
-                            twitchClient.say(channel, `${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | 98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp | ${currentlyPlaying[`${channel}`].mapData.url}`);
+                            twitchClient.say(channel, `/me ${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | 98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp | ${currentlyPlaying[`${channel}`].mapData.url}`);
                         break;
                     case "!last":
                         if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap)
-                            twitchClient.say(channel, `${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
+                            twitchClient.say(channel, `/me ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
                         break;
                     case "!lastpp":
                         if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap)
-                            twitchClient.say(channel, `${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | 98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp | ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
+                            twitchClient.say(channel, `/me ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | 98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp | ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
                         break;
                     case "!help":
-                        twitchClient.say(channel, "| !np - Show currently playing map | !nppp - Show currently playing map and pp values | !last - Show previously played map | !lastpp - Show previously played map and pp values |");
+                        twitchClient.say(channel, "/me | !np - Show currently playing map | !nppp - Show currently playing map and pp values | !last - Show previously played map | !lastpp - Show previously played map and pp values |");
                         break;
                 }
             });
@@ -288,6 +311,11 @@ const ioClient = io.connect(socketUrl);
     });
 })();
 
+/**
+ * Get live status of twitch channel
+ * @param {string} channel 
+ * @returns {Boolean}
+ */
 function liveStatus(channel) {
     return new Promise(async (resolve) => {
         if(!twitchApi.accessToken || (twitchApi.expires-Math.floor(Date.now() / 1000)) <= 1000) {
@@ -319,6 +347,11 @@ function liveStatus(channel) {
     });
 }
 
+/**
+ * Lookup a beatmap on osu! api
+ * @param {string} beatmapName 
+ * @returns {Promise}
+ */
 function lookupBeatmap(beatmapName) {
     return new Promise(async (resolve, reject) => {
         if(!osuApi.accessToken || (osuApi.expires-Math.floor(Date.now() / 1000)) <= 1000) {
@@ -377,8 +410,12 @@ function lookupBeatmap(beatmapName) {
     });
 }
 
-// false - leave channel
-// true - join channel
+/**
+ * Join or leave twitch channel
+ * @param {string} twitch channel
+ * @param {boolean} state - true = join | false = leave
+ * @returns {Promise}
+ */
 function toggleChannel(twitch, state) {
     return new Promise(resolve => {
         if(twitchClient.getChannels().includes(`#${twitch}`) && state == false) {
@@ -393,10 +430,18 @@ function toggleChannel(twitch, state) {
     });
 }
 
-function renderReplay(replay) {
+/**
+ * Render a replay
+ * @param {Buffer} replay 
+ * @param {string} username 
+ * @returns {string} replay url
+ */
+function renderReplay(replay, username) {
     return new Promise(resolve => {
-        var replayForm = new FormData();
-        replayForm.append("replayFile", replay);
+        if(!replay || !username) return;
+
+        let replayForm = new FormData();
+        replayForm.append("replayFile", replay, { filename: "replay.osr", contentType: "application/octet-stream" });
         replayForm.append("username", "streamhelper");
         replayForm.append("resolution", "1280x720");
         replayForm.append("verificationKey", process.env.OSURENDER);
