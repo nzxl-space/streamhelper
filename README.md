@@ -3,8 +3,7 @@ This is the open repository of osu.nzxl.space - A free to use, simple and powerf
 
 # Usage
 Sign up at [osu.nzxl.space](https://osu.nzxl.space)<br>
-This bot actively uses your Discord activity to grab important stuff e.g. the current playing map and osu! username.<br>
-Before authorizing the access, you should make sure that you've connected a Twitch account to your Discord account in order for the bot to join your chat.
+** You need to have Discord Game Activities enabled and a linked Twitch Account **
 
 # Features
 Commands:
@@ -13,15 +12,12 @@ Commands:
 - !last - Show last playing map
 - !lastpp - Show last playing map with Performance Values
 <br>
-Automatically grabs your stuff from the discord game activity = You don't need to run any other programs.
-<br>
-Just launch discord, start osu!game and enjoy.
+- Automatically renders your new top plays using o!rdr.
 
 # Roadmap
-- Automatically render your new top plays using o!rdr
+- ~~Automatically render your new top plays using o!rdr~~
+- ~~Code optimization o_o~~ (It won't happen)
 - Realtime embedded OBS overlays for PP, Score Farming, etc.
-- Optional downloadable client for more funny stuff? Twitch chat integration? Channel Points rewards?
-- Code optimization o_o
 
 # Self-hosting setup
 I don't really encourage people doing this, but you're free to do whatever you like with this project! :)
@@ -29,6 +25,9 @@ I don't really encourage people doing this, but you're free to do whatever you l
 Requirements:
 - MongoDB
 - NodeJS v16.15+
+- [omkelderman/osu-replay-downloader](https://github.com/omkelderman/osu-replay-downloader)
+- [kionell/osu-pp-calculator](https://github.com/kionell/osu-pp-calculator)
+- [o!rdr](https://ordr.issou.best)
 
 ```
 $ git clone https://github.com/nzxl-space/streamhelper
@@ -56,6 +55,10 @@ DISCORD_GUILD="<discord guild id>"
 DISCORD_REDIRECT_URI="<discord redirect url>"
 
 MONGODB="<mongodb connection string>"
+
+OSURENDER="<o!rdr api key>"
+
+DOWNLOADURL="<replay download server>"
 ```
 
 After setting environment variables you can start the bot with:
