@@ -213,7 +213,12 @@ const ioClient = io.connect(socketUrl);
                 let beatmapId = message.match(Regex.beatmapId), setId = message.match(Regex.setId), mods = message.match(Regex.beatmapMods);
                 if(beatmapId) {
                     let map = await banchoClient.osuApi.beatmaps.getBySetId(beatmapId[0]);
-                    if(!map || map.length <= 0) await banchoClient.osuApi.beatmaps.getByBeatmapId(beatmapId[0]);
+                    if(!map || map.length <= 0) {
+                        beatmap = await banchoClient.osuApi.beatmaps.getByBeatmapId(beatmapId[0]);
+                        if(!beatmap || beatmap.length <= 0) return;
+                        map = beatmap;
+                    }
+
 
                     if(setId && map.length >= 1)
                         map = map.filter(x => x.id == setId);
