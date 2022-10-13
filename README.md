@@ -2,6 +2,7 @@
 [![Website](https://img.shields.io/website-up-down-green-red/https/osu.nzxl.space.svg)](https://osu.nzxl.space)
 [![CodeFactor](https://www.codefactor.io/repository/github/nzxl-space/streamhelper/badge)](https://www.codefactor.io/repository/github/nzxl-space/streamhelper)
 [![DeepScan grade](https://deepscan.io/api/teams/19243/projects/22590/branches/669935/badge/grade.svg)](https://deepscan.io/dashboard#view=project&tid=19243&pid=22590&bid=669935)
+[![njsscan sarif](https://github.com/nzxl-space/streamhelper/actions/workflows/njsscan.yml/badge.svg?branch=main)](https://github.com/nzxl-space/streamhelper/actions/workflows/njsscan.yml)
 [![Discord](https://discord.com/api/guilds/1024630490336075827/widget.png)](https://osu.nzxl.space)
 ___
 StreamHelper is a free to use, powerful and simple *beatmap request* bot for osu! players.  
@@ -25,8 +26,9 @@ After checking that you have both a working *Discord Presence* and a linked *Twi
 - !last - Show previous played map
 - *You can add pp to the commands (eg. !nppp) to show the performance values of a map. Currently only works without mod modifiers but will change in the future*
 2. [x] Automatic rendered replays using o!rdr (Danser)
-- Only works for newest top 10 scores.
 3. [ ] Realtime embedded OBS overlays for Performance, Score, etc.
+4. [ ] Beatmap recommendation algorithm (Database population already running 🏃‍♂️)
+5. [ ] Dockerization for easy deploy
 
 # Setup
 **This is only recommended if you're a REAL nerd, because some things can break randomly.**
