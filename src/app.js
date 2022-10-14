@@ -73,8 +73,8 @@ const socketUrl = "https://ordr-ws.issou.best";
 const io = require("socket.io-client");
 const ioClient = io.connect(socketUrl);
 
+let activeUsers, users, mapData;
 (() => {
-    let activeUsers, users, mapData;
     mongoClient.connect(async err => {
         if(err) return console.log("MongoDB failed!");
         db = mongoClient.db("osu");
@@ -98,11 +98,7 @@ const ioClient = io.connect(socketUrl);
 
         if(discordClient.listeners("guildMemberRemove").length <= 0) {
             discordClient.on("guildMemberRemove", async (member) => {
-                users.findOne({ userId: member.id }).then(async (user) => {
-                    await toggleChannel(user.twitch, false);
-                    users.deleteOne({ userId: user.id });
-                    if(activeUsers.indexOf(user.id) > -1) activeUsers.splice(activeUsers.indexOf(user.id), 1);
-                });
+                await deleteUser(member.id);
             });
 
             discordClient.on("presenceUpdate", (_old, _new) => {
@@ -119,7 +115,7 @@ const ioClient = io.connect(socketUrl);
                         await users.updateOne({ userId: user.userId }, { $set: { osu: matchedUsername[0] }});
                     } else if(user.osu == null && matchedUsername.length <= 0) {
                         if(user.activityRetryCount >= 10) {
-                            await users.deleteOne({ userId: user.userId });
+                            await deleteUser(user.userId);
                             return discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user.userId).send("Hey, I've noticed that your osu! activity presence is not working correctly, therefore the beatmap requests will be disabled.\nhttps://osu.ppy.sh/wiki/en/Guides/Discord_Rich_Presence\nNotice: you shouldn't run osu! nor Discord as *Administrator*.\n\nAny data containing your info will be wiped from our systems. Make sure to re-authorize the access if you want to have the requests back enabled.");    
                         }
 
@@ -489,6 +485,25 @@ function renderReplay(replay, username) {
 
             console.log(`[o!rdr] ${awaitingVideo[`${result.renderID}`].url} (${result.renderID}) done!`);
             resolve(awaitingVideo[`${result.renderID}`].url);
+        });
+    });
+}
+
+/**
+ * Delete user from db
+ * @param {string|Number} user id
+ * @returns 
+ */
+function deleteUser(id) {
+    return new Promise(resolve => {
+        users.findOne({ userId: id }).then(async (user) => {
+            await toggleChannel(user.twitch, false);
+            await users.deleteOne({ userId: user.userId });
+
+            if(activeUsers.indexOf(user.userId) > -1)
+                activeUsers.splice(activeUsers.indexOf(user.userId), 1);
+
+            resolve();
         });
     });
 }
