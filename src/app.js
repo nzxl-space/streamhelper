@@ -174,9 +174,6 @@ const ioClient = io.connect(socketUrl);
                                 previousMap: currentlyPlaying[`#${user.twitch}`]
                             }
 
-                            if(await liveStatus(user.twitch) == true) await toggleChannel(user.twitch, true);
-                            else await toggleChannel(user.twitch, false);
-
                             banchoClient.osuApi.user.getBest(user.osu).then(scores => {
                                 scores.forEach(score => {
                                     if(score.replayAvailable) {
@@ -209,6 +206,15 @@ const ioClient = io.connect(socketUrl);
     twitchClient.on("connected", () => {
         console.log(`Twitch connected as ${process.env.TWITCH_USERNAME}!`);
         if(twitchClient.listeners("message").length <= 0) {
+            setInterval(() => {
+                for (let i = 0; i < activeUsers.length; i++) {
+                    users.findOne({ userId: activeUsers[i] }).then(async (user) => {
+                        if(await liveStatus(user.twitch) == true) await toggleChannel(user.twitch, true);
+                        else await toggleChannel(user.twitch, false);
+                    });
+                }
+            }, 5*60*1000);
+
             twitchClient.on("message", async (channel, tags, message, self) => {
                 let beatmapId = message.match(Regex.beatmapId), setId = message.match(Regex.setId), mods = message.match(Regex.beatmapMods);
                 if(beatmapId) {
