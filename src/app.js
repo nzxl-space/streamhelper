@@ -223,6 +223,7 @@ let activeUsers, users, mapData;
 
                     users.findOne({ twitch: channel.replace("#", "") }).then(user => {
                         if(!user || user && user.length <= 0 || user.osu == null) return;
+                        if(map.length <= 0) return;
                         banchoClient.getUser(user.osu).sendMessage(`${tags["username"]} » [https://osu.ppy.sh/b/${map[0].beatmapId} ${map[0].artist} - ${map[0].title} [${map[0].version}]] ${mods ? `+${mods.toString().toUpperCase()}` : ""} | ${moment(map[0].totalLength*1000).format("mm:ss")} - ★ ${Math.round(map[0].difficultyRating * 100) / 100} - AR${map[0].approachRate}`);
                     });
 
