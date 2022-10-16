@@ -121,6 +121,11 @@ let activeUsers, users, mapData;
 
                         return await users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
                     }
+                    
+                    if(await liveStatus(user.twitch) == true) 
+                        await toggleChannel(user.twitch, true);
+                    else 
+                        await toggleChannel(user.twitch, false);
 
                     let mapName = activity[0].details;
                     if(!mapName) return;
@@ -202,15 +207,6 @@ let activeUsers, users, mapData;
     twitchClient.on("connected", () => {
         console.log(`Twitch connected as ${process.env.TWITCH_USERNAME}!`);
         if(twitchClient.listeners("message").length <= 0) {
-            setInterval(() => {
-                for (let i = 0; i < activeUsers.length; i++) {
-                    users.findOne({ userId: activeUsers[i] }).then(async (user) => {
-                        if(await liveStatus(user.twitch) == true) await toggleChannel(user.twitch, true);
-                        else await toggleChannel(user.twitch, false);
-                    });
-                }
-            }, 5*60*1000);
-
             twitchClient.on("message", async (channel, tags, message, self) => {
                 let beatmapId = message.match(Regex.beatmapId), setId = message.match(Regex.setId), mods = message.match(Regex.beatmapMods);
                 if(beatmapId) {
