@@ -3,7 +3,6 @@ process.noDeprecation = true;
 // Utils
 const Regex = {
     setId: /(?<=#osu\/|\/s\/)\d+/g,
-    setIdBancho: /(?<=#\/|\/s\/)\d+/g,
     beatmapId: /(?<=beatmapsets\/|b\/)\d+/g,
     beatmapMods: /(?<=\+)(?:NF|EZ|HD|HR|(SD|PF)|(NC|DT)|RX|HT|FL|SO)+/ig
 };
@@ -104,28 +103,51 @@ let activeUsers, users, mapData;
             discordClient.on("presenceUpdate", (_old, _new) => {
                 if(!activeUsers.includes(_new.userId) || _new.guild.id !== process.env.DISCORD_GUILD) return;
 
-                let activity = _new.activities.filter(a => a.applicationId == "367827983903490050"); // osu!
-                if(!activity || activity && activity.length <= 0) return;
-
                 users.findOne({ userId: _new.userId }).then(async (user) => {
-                    if(activity[0].assets == null || activity[0].assets && !activity[0].assets.largeText) return;
-                    matchedUsername = activity[0].assets.largeText.match(/^\w+/);
+                    let activity = _new.activities.filter(a => a.applicationId == "367827983903490050"); // osu!
+                    if(!activity || activity && activity.length <= 0) return;
 
-                    if(user.osu == null && matchedUsername.length >= 1) {
-                        await users.updateOne({ userId: user.userId }, { $set: { osu: matchedUsername[0] }});
-                    } else if(user.osu == null && matchedUsername.length <= 0) {
-                        if(user.activityRetryCount >= 10) {
+                    if(user.osu == null) {
+                        if(user["activityRetryCount"] && user.activityRetryCount >= 6) {
                             await deleteUser(user.userId);
-                            return discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user.userId).send("Hey, I've noticed that your osu! activity presence is not working correctly, therefore the beatmap requests will be disabled.\nhttps://osu.ppy.sh/wiki/en/Guides/Discord_Rich_Presence\nNotice: you shouldn't run osu! nor Discord as *Administrator*.\n\nAny data containing your info will be wiped from our systems. Make sure to re-authorize the access if you want to have the requests back enabled.");    
+                            return sendDM(user.userId, "Hey, I've noticed that your osu! activity presence is not working correctly, therefore the beatmap requests will be disabled.\nhttps://osu.ppy.sh/wiki/en/Guides/Discord_Rich_Presence\nNotice: you shouldn't run osu! nor Discord as *Administrator*.\n\nAny data containing your info will be wiped from our systems. Make sure to re-authorize the access if you want to have the requests back enabled.");    
                         }
 
-                        return await users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
+                        if(activity[0].assets == null || activity[0].assets && !activity[0].assets.largeText) {
+                            return await users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
+                        }
+                        
+                        matchedUsername = activity[0].assets.largeText.match(/^\w+/);
+                        if(matchedUsername && matchedUsername.length >= 1) {
+                            await users.updateOne({ userId: user.userId }, { $set: { osu: matchedUsername[0] }});
+                        } else {
+                            return await users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
+                        }
                     }
-                    
-                    if(await liveStatus(user.twitch) == true) 
-                        await toggleChannel(user.twitch, true);
-                    else 
-                        await toggleChannel(user.twitch, false);
+
+                    await toggleChannel(user.twitch);
+
+                    banchoClient.osuApi.user.getBest(user.osu).then(scores => {
+                        scores.forEach(score => {
+                            if(score.replayAvailable) {
+                                let date = moment(Date.now()).diff(score.date, "days");
+                                if(date <= 1) {
+                                    users.findOne({ osu: user.osu }).then((user) => {
+                                        if(!user || user["replays"] && Object.keys(user.replays).includes(`${score.beatmapId}`)) return;
+            
+                                        fetch(`${process.env.DOWNLOADURL}?userId=${score.userId}&beatmapId=${score.beatmapId}`).then(async replay => {
+                                            let url = await renderReplay(replay.body, user.osu);
+                                            users.updateOne({ userId: user.userId }, { $set: { [`replays.${score.beatmapId}`]: `${url}` }});
+                                            
+                                            if(twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                                                twitchClient.say(`#${user.twitch}`, `/me A replay of your new top play is available here: ${url}`);
+                                            }
+                                        });
+                                    });
+                                }
+                            }
+                        });
+                    });
 
                     let mapName = activity[0].details;
                     if(!mapName) return;
@@ -146,21 +168,16 @@ let activeUsers, users, mapData;
                                         X: Math.round(map.score.performance[2].totalPerformance)
                                     }
                                 }).then(() => {
-                                    discordClient.guilds.cache.get(process.env.DISCORD_GUILD).channels.cache.find(x => x.name == "events").send({ embeds: [
-                                        new MessageEmbed()
-                                        .setColor("#FD7CB6")
-                                        .setTitle(`${mapName}`)
-                                        .setURL(`https://osu.ppy.sh/beatmaps/${map.id}`)
-                                        .setDescription(`mapped by ${map.creator} | ${moment(map.total_length*1000).format("mm:ss")} - ★ ${Math.round(map.difficulty_rating * 100) / 100} - AR${map.ar}`)
-                                        .setAuthor({ name: `A new map has been added to the database!`, iconURL: `https://i.imgur.com/NJt4fjH.png` })
-                                        .addFields(
-                                            { name: "98% FC", value: `${Math.round(map.score.performance[0].totalPerformance)}pp`, inline: true },
-                                            { name: "99% FC", value: `${Math.round(map.score.performance[1].totalPerformance)}pp`, inline: true },
-                                            { name: "100% FC", value: `${Math.round(map.score.performance[2].totalPerformance)}pp`, inline: true }
-                                        )
-                                        .setImage(`https://assets.ppy.sh/beatmaps/${map.beatmapset_id}/covers/cover.jpg`)
-                                        .setTimestamp()
-                                    ]});
+                                    postEvent(`${mapName}`, 
+                                    `https://osu.ppy.sh/beatmaps/${map.id}`, 
+                                    `mapped by ${map.creator} | ${moment(map.total_length*1000).format("mm:ss")} - ★ ${Math.round(map.difficulty_rating * 100) / 100} - AR${map.ar}`,
+                                    `A new map has been added to the database!`, 
+                                    `https://i.imgur.com/NJt4fjH.png`, [
+                                        { name: "98% FC", value: `${Math.round(map.score.performance[0].totalPerformance)}pp`, inline: true },
+                                        { name: "99% FC", value: `${Math.round(map.score.performance[1].totalPerformance)}pp`, inline: true },
+                                        { name: "100% FC", value: `${Math.round(map.score.performance[2].totalPerformance)}pp`, inline: true }
+                                    ], 
+                                    `https://assets.ppy.sh/beatmaps/${map.beatmapset_id}/covers/cover.jpg`);
                                 });
                             }
 
@@ -174,28 +191,6 @@ let activeUsers, users, mapData;
                                 },
                                 previousMap: currentlyPlaying[`#${user.twitch}`]
                             }
-
-                            banchoClient.osuApi.user.getBest(user.osu).then(scores => {
-                                scores.forEach(score => {
-                                    if(score.replayAvailable) {
-                                        let date = moment(Date.now()).diff(score.date, "days");
-                                        if(date <= 3) {
-                                            users.findOne({ osu: user.osu }).then((user) => {
-                                                if(!user || user["replays"] && Object.keys(user.replays).includes(`${score.beatmapId}`)) return;
-                    
-                                                fetch(`${process.env.DOWNLOADURL}?userId=${score.userId}&beatmapId=${score.beatmapId}`).then(async replay => {
-                                                    let url = await renderReplay(replay.body, user.osu);
-                                                    users.updateOne({ userId: user.userId }, { $set: { [`replays.${score.beatmapId}`]: `${url}` }});
-                                                    
-                                                    if(twitchClient.getChannels().includes(`#${user.twitch}`)) {
-                                                        twitchClient.say(`#${user.twitch}`, `/me A replay of your new top play is available here: ${url}`);
-                                                    }
-                                                });
-                                            });
-                                        }
-                                    }
-                                });
-                            });
                         });
                     }
                 });
@@ -211,19 +206,13 @@ let activeUsers, users, mapData;
                 let beatmapId = message.match(Regex.beatmapId), setId = message.match(Regex.setId), mods = message.match(Regex.beatmapMods);
                 if(beatmapId) {
                     let map = await banchoClient.osuApi.beatmaps.getBySetId(beatmapId[0]);
-                    if(!map || map.length <= 0) {
-                        beatmap = await banchoClient.osuApi.beatmaps.getByBeatmapId(beatmapId[0]);
-                        if(!beatmap || beatmap.length <= 0) return;
-                        map = beatmap;
-                    }
+                    if(!map || map && map.length <= 0) return;
 
-
-                    if(setId && map.length >= 1)
+                    if(setId)
                         map = map.filter(x => x.id == setId);
 
                     users.findOne({ twitch: channel.replace("#", "") }).then(user => {
                         if(!user || user && user.length <= 0 || user.osu == null) return;
-                        if(map.length <= 0) return;
                         banchoClient.getUser(user.osu).sendMessage(`${tags["username"]} » [https://osu.ppy.sh/b/${map[0].beatmapId} ${map[0].artist} - ${map[0].title} [${map[0].version}]] ${mods ? `+${mods.toString().toUpperCase()}` : ""} | ${moment(map[0].totalLength*1000).format("mm:ss")} - ★ ${Math.round(map[0].difficultyRating * 100) / 100} - AR${map[0].approachRate}`);
                     });
 
@@ -233,21 +222,21 @@ let activeUsers, users, mapData;
                 message = message.split(" ");
                 let command = message[0].startsWith("!") ? message.splice(0, 1).join("") : null;
                 switch (command) {
-                    case "!np":
-                        if(currentlyPlaying[`${channel}`])
-                            twitchClient.say(channel, `/me ${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${currentlyPlaying[`${channel}`].mapData.url}`);
-                        break;
                     case "!nppp":
-                        if(currentlyPlaying[`${channel}`])
-                            twitchClient.say(channel, `/me ${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | 98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp | ${currentlyPlaying[`${channel}`].mapData.url}`);
-                        break;
-                    case "!last":
-                        if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap)
-                            twitchClient.say(channel, `/me ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
+                    case "!np":
+                        if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].mapData) {
+                            twitchClient.say(channel, `/me ${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${command == "!nppp" ? `98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].mapData.url}`);
+                        } else {
+                            twitchClient.say(channel, "/me No data available, try again later. TriHard");
+                        }
                         break;
                     case "!lastpp":
-                        if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap)
-                            twitchClient.say(channel, `/me ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | 98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp | ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
+                    case "!last":
+                        if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap && currentlyPlaying[`${channel}`].previousMap.mapData) {
+                            twitchClient.say(channel, `/me ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData.difficulty_rating * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${command == "!lastpp" ? `98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
+                        } else {
+                            twitchClient.say(channel, "/me No data available, try again later. TriHard");
+                        }
                         break;
                     case "!help":
                         twitchClient.say(channel, "/me | !np - Show currently playing map | !nppp - Show currently playing map and pp values | !last - Show previously played map | !lastpp - Show previously played map and pp values |");
@@ -286,7 +275,7 @@ let activeUsers, users, mapData;
                                 users.findOne({ userId: user.id }).then((result) => {
                                     if(!result || result && result.length <= 0) {
                                         let twitch = c.filter(x => x.type == "twitch");
-                                        if(twitch.length <= 0) return discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user.id).send("Twitch channel not found. Did you link it correctly with Discord? Try again when you linked it by re-authorizing! :)");
+                                        if(twitch.length <= 0) return sendDM(user.id, "Twitch channel not found. Did you link it correctly with Discord? Try again when you linked it :)");
                                         
                                         users.insertOne({
                                             userId: user.id,
@@ -317,7 +306,7 @@ let activeUsers, users, mapData;
 
 /**
  * Get live status of twitch channel
- * @param {string} channel 
+ * @param {String} channel 
  * @returns {Boolean}
  */
 function liveStatus(channel) {
@@ -353,7 +342,7 @@ function liveStatus(channel) {
 
 /**
  * Lookup a beatmap on osu! api
- * @param {string} beatmapName 
+ * @param {String} beatmapName 
  * @returns {Promise}
  */
 function lookupBeatmap(beatmapName) {
@@ -416,12 +405,15 @@ function lookupBeatmap(beatmapName) {
 
 /**
  * Join or leave twitch channel
- * @param {string} twitch channel
- * @param {boolean} state - true = join | false = leave
+ * @param {String} twitch channel
+ * @param {Boolean} state - true = join | false = leave
  * @returns {Promise}
  */
 function toggleChannel(twitch, state) {
-    return new Promise(resolve => {
+    return new Promise(async resolve => {
+
+        state = !state ? await liveStatus(twitch) : state;
+
         if(twitchClient.getChannels().includes(`#${twitch}`) && state == false) {
             twitchClient.part(`#${twitch}`);
             console.log(`Left channel #${twitch}`);
@@ -437,8 +429,8 @@ function toggleChannel(twitch, state) {
 /**
  * Render a replay
  * @param {Buffer} replay 
- * @param {string} username 
- * @returns {string} replay url
+ * @param {String} username 
+ * @returns {String} replay url
  */
 function renderReplay(replay, username) {
     return new Promise(resolve => {
@@ -488,8 +480,8 @@ function renderReplay(replay, username) {
 
 /**
  * Delete user from db
- * @param {string|Number} user id
- * @returns 
+ * @param {String|Number} user id
+ * @returns
  */
 function deleteUser(id) {
     return new Promise(resolve => {
@@ -503,4 +495,40 @@ function deleteUser(id) {
             resolve();
         });
     });
+}
+
+/**
+ * send dm to user
+ * @param {Number} user id
+ * @param {String} message 
+ * @returns {Promise}
+ */
+function sendDM(user, message) {
+    return discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user).send(message);
+}
+
+
+/**
+ * uhh discord embed??
+ * @param {String} title 
+ * @param {String} url 
+ * @param {String} description 
+ * @param {String} type 
+ * @param {String} icon 
+ * @param {Array} fields 
+ * @param {String} image
+ * @returns 
+ */
+function postEvent(title, url, description, type, icon, fields = [], image) {
+    return discordClient.guilds.cache.get(process.env.DISCORD_GUILD).channels.cache.find(x => x.name == "events").send({ embeds: [
+        new MessageEmbed()
+        .setColor("#FD7CB6")
+        .setTitle(title)
+        .setURL(url)
+        .setDescription(description)
+        .setAuthor({ name: type, iconURL: icon })
+        .addFields(fields)
+        .setImage(image)
+        .setTimestamp()
+    ]});
 }
