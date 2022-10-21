@@ -153,13 +153,14 @@ let activeUsers, users, mapData;
                     if(!currentlyPlaying[`#${user.twitch}`] || currentlyPlaying[`#${user.twitch}`].name != mapName) {
                         mapData.findOne({ name: mapName }).then(async (map) => {
                             if(!map || map && map.length <= 0) {
-                                map = await lookupBeatmap(mapName);
-                                map.score = await pp.calculate({ beatmapId: map.id });
+                                map = {};
+                                map.mapData = await lookupBeatmap(mapName);
+                                map.score = await pp.calculate({ beatmapId: map.mapData.id });
 
                                 mapData.insertOne({
                                     name: mapName,
-                                    setId: map.id,
-                                    mapData: map,
+                                    setId: map.mapData.id,
+                                    mapData: map.mapData,
                                     ppData: {
                                         A: Math.round(map.score.performance[0].totalPerformance),
                                         S: Math.round(map.score.performance[1].totalPerformance),
@@ -167,15 +168,15 @@ let activeUsers, users, mapData;
                                     }
                                 }).then(() => {
                                     postEvent(`${mapName}`, 
-                                    `https://osu.ppy.sh/beatmaps/${map.id}`, 
-                                    `mapped by ${map.creator} | ${moment(map.total_length*1000).format("mm:ss")} - ★ ${Math.round(map.difficulty_rating * 100) / 100} - AR${map.ar}`,
+                                    `https://osu.ppy.sh/beatmaps/${map.mapData.id}`, 
+                                    `mapped by ${map.mapData.creator} | ${moment(map.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(map.mapData.difficulty_rating * 100) / 100} - AR${map.mapData.ar}`,
                                     `A new map has been added to the database!`, 
                                     `https://i.imgur.com/NJt4fjH.png`, [
                                         { name: "98% FC", value: `${Math.round(map.score.performance[0].totalPerformance)}pp`, inline: true },
                                         { name: "99% FC", value: `${Math.round(map.score.performance[1].totalPerformance)}pp`, inline: true },
                                         { name: "100% FC", value: `${Math.round(map.score.performance[2].totalPerformance)}pp`, inline: true }
                                     ], 
-                                    `https://assets.ppy.sh/beatmaps/${map.beatmapset_id}/covers/cover.jpg`);
+                                    `https://assets.ppy.sh/beatmaps/${map.mapData.beatmapset_id}/covers/cover.jpg`);
                                 });
                             }
 
