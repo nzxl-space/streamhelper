@@ -131,8 +131,8 @@ let activeUsers, users, mapData;
                     banchoClient.osuApi.user.getBest(user.osu).then(scores => {
                         scores.forEach(score => {
                             if(score.replayAvailable) {
-                                let date = moment(Date.now()).diff(score.date, "days");
-                                if(date <= 7 && twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                                let minutes = moment(Date.now()).diff(score.date, "minutes");
+                                if(minutes <= 30 && twitchClient.getChannels().includes(`#${user.twitch}`)) {
                                     users.findOne({ osu: user.osu }).then((user) => {
                                         if(!user || user["replays"] && Object.keys(user.replays).includes(`${score.beatmapId}`)) return;
             
