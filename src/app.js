@@ -132,9 +132,10 @@ let activeUsers, users, mapData;
                         scores.forEach(score => {
                             if(score.replayAvailable) {
                                 let minutes = moment(Date.now()).diff(score.date, "minutes");
-                                if(minutes <= 30 && twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                                if(minutes <= 60 && twitchClient.getChannels().includes(`#${user.twitch}`)) {
                                     users.findOne({ osu: user.osu }).then((user) => {
                                         if(!user || user["replays"] && Object.keys(user.replays).includes(`${score.beatmapId}`)) return;
+                                        users.updateOne({ userId: user.userId }, { $set: { [`replays.${score.beatmapId}`]: `Rendering` }});
             
                                         fetch(`${process.env.DOWNLOADURL}?userId=${score.userId}&beatmapId=${score.beatmapId}`).then(async replay => {
                                             let url = await renderReplay(replay.body, user.osu);
