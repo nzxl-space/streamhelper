@@ -333,8 +333,15 @@ function liveStatus(channel) {
             retry: 3,
             pause: 5000
         }).then(async result => {
-            result = await result.json();
-            resolve(result.data.length >= 1 ? true : false);
+            try {
+                result = await result.json();
+                if(result.data && result.data.length >= 1) {
+                    return resolve(result.data[0].game_name == "osu!" ? true : false);
+                }
+                resolve(false);
+            } catch (err) {
+                resolve(false);
+            }
         });
     });
 }
