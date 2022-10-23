@@ -2,8 +2,8 @@ process.noDeprecation = true;
 
 // Utils
 const Regex = {
-    setId: /(?<=#osu\/|\/s\/)\d+/g,
-    beatmapId: /(?<=beatmapsets\/|b\/)\d+/g,
+    setId: /(?<=#osu\/|\/b\/)\d+/g,
+    beatmapId: /(?<=beatmapsets\/|s\/)\d+/g,
     beatmapMods: /(?<=\+)(?:NF|EZ|HD|HR|(SD|PF)|(NC|DT)|RX|HT|FL|SO)+/ig
 };
 const moment = require("moment");
@@ -204,12 +204,12 @@ let activeUsers, users, mapData;
         if(twitchClient.listeners("message").length <= 0) {
             twitchClient.on("message", async (channel, tags, message, self) => {
                 let beatmapId = message.match(Regex.beatmapId), setId = message.match(Regex.setId), mods = message.match(Regex.beatmapMods);
-                if(beatmapId && !self) {
-                    let map = await banchoClient.osuApi.beatmaps.getBySetId(beatmapId[0]);
+                if(beatmapId && !self || setId && !self) {
+                    let map = beatmapId && beatmapId.length >= 1 ? await banchoClient.osuApi.beatmaps.getBySetId(beatmapId[0]) : await banchoClient.osuApi.beatmaps.getByBeatmapId(setId[0]);
                     if(!map || map && map.length <= 0) return;
 
-                    if(setId)
-                        map = map.filter(x => x.id == setId);
+                    if(setId && setId.length >= 1)
+                        map = map.filter(x => x.id == setId[0]);
 
                     users.findOne({ twitch: channel.replace("#", "") }).then(user => {
                         if(!user || user && user.length <= 0 || user.osu == null) return;
@@ -227,7 +227,7 @@ let activeUsers, users, mapData;
                         if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].mapData) {
                             twitchClient.say(channel, `/me ${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${command == "!nppp" ? `98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].mapData.url}`);
                         } else {
-                            twitchClient.say(channel, "/me No data available, try again later. TriHard");
+                            twitchClient.say(channel, "/me No data available, try again later. :sob:");
                         }
                         break;
                     case "!lastpp":
@@ -235,7 +235,7 @@ let activeUsers, users, mapData;
                         if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap.mapData) {
                             twitchClient.say(channel, `/me ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${command == "!lastpp" ? `98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
                         } else {
-                            twitchClient.say(channel, "/me No data available, try again later. TriHard");
+                            twitchClient.say(channel, "/me No data available, try again later. :sob:");
                         }
                         break;
                     case "!help":
