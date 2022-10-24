@@ -221,7 +221,9 @@ let activeUsers, users, mapData;
 
                 message = message.split(" ");
                 let command = message[0].startsWith("!") ? message.splice(0, 1).join("") : null;
-                switch (command) {
+                if(!command) return;
+                
+                switch (command.toLowerCase()) {
                     case "!nppp":
                     case "!np":
                         if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].mapData) {
