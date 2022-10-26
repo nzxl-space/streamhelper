@@ -53,7 +53,7 @@ let osuApi = {
 const { Client, Intents, MessageEmbed } = require("discord.js");
 const discordClient = new Client({
     partials: ["CHANNEL"],
-    intents: [ Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_PRESENCES, Intents.FLAGS.DIRECT_MESSAGES, Intents.FLAGS.DIRECT_MESSAGE_TYPING ]
+    intents: [ Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MEMBERS, Intents.FLAGS.GUILD_PRESENCES, Intents.FLAGS.DIRECT_MESSAGES, Intents.FLAGS.DIRECT_MESSAGE_TYPING ]
 });
 const DiscordOauth2 = require("discord-oauth2");
 const oauth = new DiscordOauth2();
@@ -231,21 +231,21 @@ let activeUsers, users, mapData;
                     case "!nppp":
                     case "!np":
                         if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].mapData) {
-                            twitchClient.say(channel, `/me ${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${command == "!nppp" ? `98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].mapData.url}`);
+                            twitchClient.say(channel, `» ${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${command == "!nppp" ? `98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].mapData.url}`);
                         } else {
-                            twitchClient.say(channel, "/me No data available, try again later. :sob:");
+                            twitchClient.say(channel, "» No data available, try again later. 😭");
                         }
                         break;
                     case "!lastpp":
                     case "!last":
                         if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap.mapData) {
-                            twitchClient.say(channel, `/me ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${command == "!lastpp" ? `98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
+                            twitchClient.say(channel, `» ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${command == "!lastpp" ? `98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
                         } else {
-                            twitchClient.say(channel, "/me No data available, try again later. :sob:");
+                            twitchClient.say(channel, "» No data available, try again later. 😭");
                         }
                         break;
                     case "!help":
-                        twitchClient.say(channel, "/me | !np - Show currently playing map | !nppp - Show currently playing map and pp values | !last - Show previously played map | !lastpp - Show previously played map and pp values |");
+                        twitchClient.say(channel, "» | !np - Show currently playing map | !nppp - Show currently playing map and pp values | !last - Show previously played map | !lastpp - Show previously played map and pp values |");
                         break;
                 }
             });
@@ -281,7 +281,10 @@ let activeUsers, users, mapData;
                                 users.findOne({ userId: user.id }).then((result) => {
                                     if(!result || result && result.length <= 0) {
                                         let twitch = c.filter(x => x.type == "twitch");
-                                        if(twitch.length <= 0) return sendDM(user.id, "Twitch channel not found. Did you link it correctly with Discord? Try again when you linked it :)");
+                                        if(twitch.length <= 0) {
+                                            setRole(user.id, ["on hold"]);
+                                            return sendDM(user.id, "Twitch channel not found. Did you link it correctly with Discord? Try again when you linked it :)");
+                                        }
                                         
                                         users.insertOne({
                                             userId: user.id,
@@ -291,6 +294,8 @@ let activeUsers, users, mapData;
                                         }).then(() => {
                                             activeUsers.push(user.id);
                                             setRole(user.id, ["on hold"]);
+
+                                            console.log(`Added user ${user.username}#${user.discriminator} to db`);
                                         });
                                     }
                                 });
@@ -508,6 +513,7 @@ function deleteUser(id) {
             if(activeUsers.indexOf(user.userId) > -1)
                 activeUsers.splice(activeUsers.indexOf(user.userId), 1);
 
+            console.log(`Deleted user ${user.discordName} from db`);
             resolve();
         });
     });
