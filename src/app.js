@@ -108,8 +108,9 @@ let activeUsers, users, mapData;
                     if(!activity || activity && activity.length <= 0) return await toggleChannel(user.twitch, false);
 
                     if(user.osu == null) {
-                        if(user["activityRetryCount"] && user.activityRetryCount >= 6) {
+                        if(user["activityRetryCount"] && user.activityRetryCount >= 20) {
                             await deleteUser(user.userId);
+                            setRole(user.userId, ["on hold"]);
                             return sendDM(user.userId, "Hey, I've noticed that your osu! activity presence is not working correctly, therefore the beatmap requests will be disabled.\nhttps://osu.ppy.sh/wiki/en/Guides/Discord_Rich_Presence\nNotice: you shouldn't run osu! nor Discord as *Administrator*.\n\nAny data containing your info will be wiped from our systems. Make sure to re-authorize the access if you want to have the requests back enabled.");    
                         }
 
@@ -120,6 +121,7 @@ let activeUsers, users, mapData;
                         matchedUsername = activity[0].assets.largeText.match(/^\w+/);
                         if(matchedUsername && matchedUsername.length >= 1) {
                             await users.updateOne({ userId: user.userId }, { $set: { osu: matchedUsername[0] }});
+                            setRole(user.userId, ["regular"]);
                         } else {
                             return await users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
                         }
@@ -286,7 +288,10 @@ let activeUsers, users, mapData;
                                             discordName: `${user.username}#${user.discriminator}`,
                                             twitch: `${twitch[0].name}`,
                                             osu: null
-                                        }).then(() => activeUsers.push(user.id));
+                                        }).then(() => {
+                                            activeUsers.push(user.id);
+                                            setRole(user.id, ["on hold"]);
+                                        });
                                     }
                                 });
                             });
@@ -492,7 +497,7 @@ function renderReplay(replay, username) {
 /**
  * Delete user from db
  * @param {String|Number} user id
- * @returns
+ * @returns {Promise}
  */
 function deleteUser(id) {
     return new Promise(resolve => {
@@ -528,7 +533,7 @@ function sendDM(user, message) {
  * @param {String} icon 
  * @param {Array} fields 
  * @param {String} image
- * @returns 
+ * @returns {Boolean}
  */
 function postEvent(title, url, description, type, icon, fields = [], image) {
     return discordClient.guilds.cache.get(process.env.DISCORD_GUILD).channels.cache.find(x => x.name == "events").send({ embeds: [
@@ -542,4 +547,16 @@ function postEvent(title, url, description, type, icon, fields = [], image) {
         .setImage(image)
         .setTimestamp()
     ]});
+}
+
+/**
+ * set discord roles
+ * @param {String|Number} user 
+ * @param {Array} role 
+ * @returns {Promise}
+ */
+function setRole(user, role) {
+    discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user).roles.set([]).then(() => {
+        return discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user).roles.add(discordClient.guilds.cache.get(process.env.DISCORD_GUILD).roles.cache.find(r => r.name == role).id)
+    });
 }
