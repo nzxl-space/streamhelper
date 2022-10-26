@@ -1,10 +1,9 @@
-# streamhelper - osu.nzxl.space
 [![Website](https://img.shields.io/website-up-down-green-red/https/osu.nzxl.space.svg)](https://osu.nzxl.space)
 [![CodeFactor](https://www.codefactor.io/repository/github/nzxl-space/streamhelper/badge)](https://www.codefactor.io/repository/github/nzxl-space/streamhelper)
-[![DeepScan grade](https://deepscan.io/api/teams/19243/projects/22590/branches/669935/badge/grade.svg)](https://deepscan.io/dashboard#view=project&tid=19243&pid=22590&bid=669935)
-[![njsscan sarif](https://github.com/nzxl-space/streamhelper/actions/workflows/njsscan.yml/badge.svg?branch=main)](https://github.com/nzxl-space/streamhelper/actions/workflows/njsscan.yml)
-[![Discord](https://discord.com/api/guilds/1024630490336075827/widget.png)](https://osu.nzxl.space)
-___
+[![Discord](https://discord.com/api/guilds/1024630490336075827/widget.png)](https://osu.nzxl.space)  
+
+# streamhelper - osu.nzxl.space
+
 StreamHelper is a free to use, powerful and simple *beatmap request* bot for osu! players.  
 The main purpose of this service is just to make every streamers life easier. It's only 3 clicks away, what are you waiting for?
 
