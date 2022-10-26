@@ -156,6 +156,8 @@ let activeUsers, users, mapData;
                             if(!map || map && map.length <= 0) {
                                 map = {};
                                 map.mapData = await lookupBeatmap(mapName);
+                                if(typeof map.mapData !== "object") return;
+                                
                                 map.score = await pp.calculate({ beatmapId: map.mapData.id });
 
                                 mapData.insertOne({
@@ -355,7 +357,7 @@ function liveStatus(channel) {
  * @returns {Promise}
  */
 function lookupBeatmap(beatmapName) {
-    return new Promise(async (resolve, reject) => {
+    return new Promise(async (resolve) => {
         if(!osuApi.accessToken || (osuApi.expires-Math.floor(Date.now() / 1000)) <= 1000) {
             await fetch(`https://osu.ppy.sh/oauth/token`, {
                 method: "POST",
@@ -395,10 +397,10 @@ function lookupBeatmap(beatmapName) {
                     version = beatmapName.match(/(?!.*\[)(?<=\[).+?(?=\])/);
 
                 if(!map || !version || !artist)
-                    return reject(); //"No map found"
+                    return resolve("No map found");
 
                 if(version && version.length <= 0 || artist && artist.length <= 0)
-                    return reject(); //"No match found"
+                    return resolve("No match found");
 
                 if(map.artist == artist[1]) {
                     let foundMap = map.beatmaps.find(m => m.version == version[0]);
