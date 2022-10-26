@@ -9,7 +9,7 @@
   "author": "NZXL/kiyomii",
   "license": "ISC",
   "dependencies": {
-    "@kionell/osu-pp-calculator": "github:kionell/osu-pp-calculator",
+    "@kionell/osu-pp-calculator": "^3.1.0",
     "bancho.js": "^0.9.7",
     "discord-oauth2": "^2.10.0",
     "discord.js": "^13.6.0",

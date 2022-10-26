@@ -1,0 +1,27 @@
+name: deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      
+      - name: Run ESLint passing check
+        uses: stefanoeb/eslint-action@1.0.2
+        with:
+          files: src/
+
+      - name: Deploy App
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{secrets.SSH_HOST}}
+          username: ${{secrets.SSH_USER}}
+          key: ${{secrets.SSH_KEY}}
+          script: sh deploy.sh
