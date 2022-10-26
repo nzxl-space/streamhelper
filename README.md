@@ -27,7 +27,6 @@ After checking that you have both a working *Discord Presence* and a linked *Twi
 2. [x] Automatic rendered replays using o!rdr (Danser)
 3. [ ] Realtime embedded OBS overlays for Performance, Score, etc.
 4. [ ] Beatmap recommendation algorithm (Database population already running 🏃‍♂️)
-5. [ ] Dockerization for easy deploy
 
 # Setup
 **This is only recommended if you're a REAL nerd, because some things can break randomly.**
