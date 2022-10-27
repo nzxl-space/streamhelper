@@ -208,7 +208,6 @@ let activeUsers, users, mapData;
         if(twitchClient.listeners("message").length <= 0) {
             twitchClient.on("message", async (channel, tags, message, self) => {
                 if(self) return;
-                if(tags["username"] == process.env.TWITCH_USERNAME.toLowerCase());
 
                 let beatmapId = message.match(Regex.beatmapId), setId = message.match(Regex.setId), mods = message.match(Regex.beatmapMods);
                 if(beatmapId || setId) {
