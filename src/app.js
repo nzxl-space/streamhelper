@@ -2,8 +2,8 @@ process.noDeprecation = true;
 
 // Utils
 const Regex = {
-    setId: /(?<=#osu\/|\/b\/)\d+/g,
-    beatmapId: /(?<=beatmapsets\/|s\/)\d+/g,
+    setId: /(?<=beatmapsets\/|\/s\/)\d+/,
+    beatmapId: /(?<=beatmaps\/|b\/|#osu\/|#taiko\/|#fruits\/|#mania\/)\d+/,
     beatmapMods: /(?<=\+)(?:NF|EZ|HD|HR|(SD|PF)|(NC|DT)|RX|HT|FL|SO)+/ig
 };
 const moment = require("moment");
@@ -207,13 +207,16 @@ let activeUsers, users, mapData;
         console.log(`Twitch connected as ${process.env.TWITCH_USERNAME}!`);
         if(twitchClient.listeners("message").length <= 0) {
             twitchClient.on("message", async (channel, tags, message, self) => {
+                if(self) return;
+                if(tags["username"] == process.env.TWITCH_USERNAME.toLowerCase());
+
                 let beatmapId = message.match(Regex.beatmapId), setId = message.match(Regex.setId), mods = message.match(Regex.beatmapMods);
-                if(beatmapId && !self || setId && !self) {
-                    let map = beatmapId && beatmapId.length >= 1 ? await banchoClient.osuApi.beatmaps.getBySetId(beatmapId[0]) : await banchoClient.osuApi.beatmaps.getByBeatmapId(setId[0]);
+                if(beatmapId || setId) {
+                    let map = setId && setId.length >= 1 ? await banchoClient.osuApi.beatmaps.getBySetId(setId[0]) : await banchoClient.osuApi.beatmaps.getByBeatmapId(beatmapId[0]);
                     if(!map || map && map.length <= 0) return;
 
-                    if(setId && setId.length >= 1)
-                        map = map.filter(x => x.id == setId[0]);
+                    if(beatmapId && beatmapId.length >= 1)
+                        map = map.filter(x => x.id == beatmapId[0]);
 
                     users.findOne({ twitch: channel.replace("#", "") }).then(user => {
                         if(!user || user && user.length <= 0 || user.osu == null) return;
