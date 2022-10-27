@@ -142,7 +142,10 @@ let activeUsers, users, mapData;
                                         fetch(`${process.env.DOWNLOADURL}?userId=${score.userId}&beatmapId=${score.beatmapId}`).then(async replay => {
                                             let url = await renderReplay(replay.body, user.osu);
                                             users.updateOne({ userId: user.userId }, { $set: { [`replays.${score.beatmapId}`]: `${url}` }});
-                                            twitchClient.say(`#${user.twitch}`, `/me A replay of your new top play is available here: ${url}`);
+
+                                            if(user["silenced"] && user["silenced"] == false) {
+                                                twitchClient.say(`#${user.twitch}`, `/me A replay of your new top play is available here: ${url}`);
+                                            }
                                         });
                                     });
                                 }
@@ -228,28 +231,44 @@ let activeUsers, users, mapData;
                 message = message.split(" ");
                 let command = message[0].startsWith("!") ? message.splice(0, 1).join("") : null;
                 if(!command) return;
-                
-                switch (command.toLowerCase()) {
-                    case "!nppp":
-                    case "!np":
-                        if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].mapData) {
-                            twitchClient.say(channel, `» ${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${command == "!nppp" ? `98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].mapData.url}`);
-                        } else {
-                            twitchClient.say(channel, "» No data available, try again later. 😭");
-                        }
-                        break;
-                    case "!lastpp":
-                    case "!last":
-                        if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap.mapData) {
-                            twitchClient.say(channel, `» ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${command == "!lastpp" ? `98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
-                        } else {
-                            twitchClient.say(channel, "» No data available, try again later. 😭");
-                        }
-                        break;
-                    case "!help":
-                        twitchClient.say(channel, "» | !np - Show currently playing map | !nppp - Show currently playing map and pp values | !last - Show previously played map | !lastpp - Show previously played map and pp values |");
-                        break;
-                }
+
+                users.findOne({ twitch: channel.replace("#", "") }).then(async user => {
+                    switch (command.toLowerCase()) {
+                        case "!nppp":
+                        case "!np":
+                            if(user["silenced"] && user["silenced"] == true) return;
+                            if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].mapData) {
+                                twitchClient.say(channel, `» ${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${command == "!nppp" ? `98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].mapData.url}`);
+                            } else {
+                                twitchClient.say(channel, "» No data available, try again later. 😭");
+                            }
+                            break;
+                        case "!lastpp":
+                        case "!last":
+                            if(user["silenced"] && user["silenced"] == true) return;
+                            if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap.mapData) {
+                                twitchClient.say(channel, `» ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${command == "!lastpp" ? `98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
+                            } else {
+                                twitchClient.say(channel, "» No data available, try again later. 😭");
+                            }
+                            break;
+                        case "!help":
+                            if(user["silenced"] && user["silenced"] == true) return;
+                            twitchClient.say(channel, "» | !np - Show currently playing map | !nppp - Show currently playing map and pp values | !last - Show previously played map | !lastpp - Show previously played map and pp values |");
+                            break;
+                        case "!silence":
+                            if(tags["username"] == channel.replace("#", "")) {
+                                if(!user["silenced"] || user["silenced"] == false) {
+                                    await users.updateOne({ userId: user.userId }, { $set: { silenced: true }});
+                                    return twitchClient.say(channel, "» Silenced all bot messages for this channel");
+                                }
+
+                                await users.updateOne({ userId: user.userId }, { $set: { silenced: false }});
+                                return twitchClient.say(channel, "» Bot messages enabled for this channel");
+                            }
+                            break;
+                    }
+                });
             });
         }
     });
