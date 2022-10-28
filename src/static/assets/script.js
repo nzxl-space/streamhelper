@@ -7,7 +7,7 @@ $(window).on("load", () => {
         imageWidth: 140,
         imageHeight: 50,
         title: "Welcome!",
-        text: "We'll walk you through this step-by-step, so you can get started quickly. This will only take a few seconds.",
+        text: "We'll walk you through this step-by-step. This will only take a few seconds.",
         allowOutsideClick: false,
         showClass: {
             popup: "animated fadeInUp fast"
@@ -18,8 +18,8 @@ $(window).on("load", () => {
     }).then(() => {
         Swal.fire({
             title: "Link your Discord",
-            text: "We need some of your info.. This is only used to gather osu! related data and your Twitch username.",
-            footer: "<img class='gif' src='/assets/activities.gif'/><a class='showGif'>Why is this needed?</a>",
+            text: "This is needed to fetch important data from your profile.",
+            footer: "<img class='gif' src='/assets/activities.gif'/><a class='showGif'>How?</a>",
             confirmButtonText: "Authorize",
             allowOutsideClick: false,
             showClass: {
@@ -42,7 +42,7 @@ $(window).on("load", () => {
                             Swal.fire({
                                 icon: "success",
                                 title: "Discord Linked",
-                                html: "Beatmap requests are now enabled.<br>If the bot doesn\'t listen to requests, try re-authorizing again.<br>Also did you know that there's a !np command? 😎",
+                                html: "Beatmap requests are now enabled.<br>Make sure to read #info in the < nzxl.space > Guild that you've been added to.<br>If you don't see the Guild in your list, then that probably means that you've reached the 100-Server limit. Try again! 😎",
                                 allowOutsideClick: false,
                                 showConfirmButton: false
                             });

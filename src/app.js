@@ -110,8 +110,8 @@ let activeUsers, users, mapData;
                     if(user.osu == null) {
                         if(user["activityRetryCount"] && user.activityRetryCount >= 20) {
                             await deleteUser(user.userId);
-                            setRole(user.userId, ["on hold"]);
-                            return sendDM(user.userId, "Hey, I've noticed that your osu! activity presence is not working correctly, therefore the beatmap requests will be disabled.\nhttps://osu.ppy.sh/wiki/en/Guides/Discord_Rich_Presence\nNotice: you shouldn't run osu! nor Discord as *Administrator*.\n\nAny data containing your info will be wiped from our systems. Make sure to re-authorize the access if you want to have the requests back enabled.");    
+                            await setRole(user.userId, ["on hold"]);
+                            return await sendDM(user.userId, "Hey, I've noticed that your osu! activity presence is not working correctly, therefore the beatmap requests will be disabled.\nhttps://osu.ppy.sh/wiki/en/Guides/Discord_Rich_Presence\nNotice: you shouldn't run osu! nor Discord as *Administrator*.\n\nAny data containing your info will be wiped from our systems. Make sure to re-authorize the access if you want to have the requests back enabled.");    
                         }
 
                         if(activity[0].assets == null || activity[0].assets && !activity[0].assets.largeText) {
@@ -121,14 +121,14 @@ let activeUsers, users, mapData;
                         matchedUsername = activity[0].assets.largeText.match(/^\w+/);
                         if(matchedUsername && matchedUsername.length >= 1) {
                             await users.updateOne({ userId: user.userId }, { $set: { osu: matchedUsername[0] }});
-                            setRole(user.userId, ["regular"]);
+                            await setRole(user.userId, ["regular"]);
                         } else {
                             return await users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
                         }
                     }
 
                     if(!twitchClient.getChannels().includes(`#${user.twitch}`))
-                        await toggleChannel(user.twitch);
+                        await toggleChannel(user.twitch, true);
 
                     banchoClient.osuApi.user.getBest(user.osu).then(scores => {
                         scores.forEach(score => {
@@ -233,39 +233,28 @@ let activeUsers, users, mapData;
                 if(!command) return;
 
                 users.findOne({ twitch: channel.replace("#", "") }).then(async user => {
+                    if(command.toLowerCase() == "!silence") {
+                        if(tags["mod"] || tags["username"] == channel.replace("#", "")) {
+                            await users.updateOne({ userId: user.userId }, [ { $set: { silenced: { $eq: [false, "$silenced"] } } } ]);
+                            return twitchClient.say(channel, `» ${ !user["silenced"] ? "Silenced" : "Enabled"} all bot messages for this channel`);
+                        }
+                    }
+
+                    if(user["silenced"] && user["silenced"] == true) return;
+
                     switch (command.toLowerCase()) {
                         case "!nppp":
                         case "!np":
-                            if(user["silenced"] && user["silenced"] == true) return;
-                            if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].mapData) {
+                            if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].mapData)
                                 twitchClient.say(channel, `» ${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${command == "!nppp" ? `98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].mapData.url}`);
-                            } else {
-                                twitchClient.say(channel, "» No data available, try again later. 😭");
-                            }
                             break;
                         case "!lastpp":
                         case "!last":
-                            if(user["silenced"] && user["silenced"] == true) return;
-                            if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap.mapData) {
+                            if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap.mapData)
                                 twitchClient.say(channel, `» ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${command == "!lastpp" ? `98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
-                            } else {
-                                twitchClient.say(channel, "» No data available, try again later. 😭");
-                            }
                             break;
                         case "!help":
-                            if(user["silenced"] && user["silenced"] == true) return;
-                            twitchClient.say(channel, "» | !np - Show currently playing map | !nppp - Show currently playing map and pp values | !last - Show previously played map | !lastpp - Show previously played map and pp values |");
-                            break;
-                        case "!silence":
-                            if(tags["username"] == channel.replace("#", "")) {
-                                if(!user["silenced"] || user["silenced"] == false) {
-                                    await users.updateOne({ userId: user.userId }, { $set: { silenced: true }});
-                                    return twitchClient.say(channel, "» Silenced all bot messages for this channel");
-                                }
-
-                                await users.updateOne({ userId: user.userId }, { $set: { silenced: false }});
-                                return twitchClient.say(channel, "» Bot messages enabled for this channel");
-                            }
+                            twitchClient.say(channel, "» | !np - Show currently playing map | !nppp - Show currently playing map and pp values | !last - Show previously played map | !lastpp - Show previously played map and pp values | !silence - Silence/Enable all bot commands and messages");
                             break;
                     }
                 });
@@ -299,12 +288,12 @@ let activeUsers, users, mapData;
                             userId: user.id
                         }).then(() => {
                             oauth.getUserConnections(data.access_token).then((c) => {
-                                users.findOne({ userId: user.id }).then((result) => {
+                                users.findOne({ userId: user.id }).then(async (result) => {
                                     if(!result || result && result.length <= 0) {
                                         let twitch = c.filter(x => x.type == "twitch");
                                         if(twitch.length <= 0) {
-                                            setRole(user.id, ["on hold"]);
-                                            return sendDM(user.id, "Twitch channel not found. Did you link it correctly with Discord? Try again when you linked it :)");
+                                            await setRole(user.id, ["on hold"]);
+                                            return await sendDM(user.id, "Twitch channel not found. Please connect one to your Discord first, and then try re-authorizing :)");
                                         }
                                         
                                         users.insertOne({
@@ -312,9 +301,9 @@ let activeUsers, users, mapData;
                                             discordName: `${user.username}#${user.discriminator}`,
                                             twitch: `${twitch[0].name}`,
                                             osu: null
-                                        }).then(() => {
+                                        }).then(async () => {
                                             activeUsers.push(user.id);
-                                            setRole(user.id, ["on hold"]);
+                                            await setRole(user.id, ["on hold"]);
 
                                             console.log(`Added user ${user.username}#${user.discriminator} to db`);
                                         });
@@ -331,7 +320,7 @@ let activeUsers, users, mapData;
     });
 
     ioClient.on("connect", () => console.log("[o!rdr] Connected to server!"));
-    ioClient.on("render_done_json", data => {
+    ioClient.on("render_done_json", (data) => {
         if(`${data.renderID}` in awaitingVideo) {
             awaitingVideo[`${data.renderID}`].done = Date.now();
             awaitingVideo[`${data.renderID}`].url = data.videoUrl;
@@ -351,7 +340,7 @@ function liveStatus(channel) {
                 method: "POST",
                 retry: 3,
                 pause: 5000
-            }).then(async result => {
+            }).then(async (result) => {
                 result = await result.json();
                 twitchApi.accessToken = result.access_token;
                 twitchApi.expires = (Math.floor(Date.now() / 1000)+result.expires_in);
@@ -368,7 +357,7 @@ function liveStatus(channel) {
             },
             retry: 3,
             pause: 5000
-        }).then(async result => {
+        }).then(async (result) => {
             try {
                 result = await result.json();
                 if(result.data && result.data.length >= 1) {
@@ -404,7 +393,7 @@ function lookupBeatmap(beatmapName) {
                 },
                 retry: 3,
                 pause: 5000
-            }).then(async result => {
+            }).then(async (result) => {
                 result = await result.json();
                 osuApi.accessToken = result.access_token;
                 osuApi.expires = (Math.floor(Date.now() / 1000)+result.expires_in);
@@ -420,7 +409,7 @@ function lookupBeatmap(beatmapName) {
             },
             retry: 3,
             pause: 5000
-        }).then(async result => {
+        }).then(async (result) => {
             result = await result.json();
             for(let i in result.beatmapsets) {
                 let map = result.beatmapsets[i],
@@ -452,7 +441,7 @@ function lookupBeatmap(beatmapName) {
  * @returns {Promise}
  */
 function toggleChannel(twitch, state) {
-    return new Promise(async resolve => {
+    return new Promise(async (resolve) => {
 
         state = !state ? await liveStatus(twitch) : state;
 
@@ -475,7 +464,7 @@ function toggleChannel(twitch, state) {
  * @returns {String} replay url
  */
 function renderReplay(replay, username) {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
         if(!replay || !username) return;
 
         let replayForm = new FormData();
@@ -505,7 +494,7 @@ function renderReplay(replay, username) {
         fetch("https://apis.issou.best/ordr/renders", {
             method: "POST",
             body: replayForm
-        }).then(async result => {
+        }).then(async (result) => {
             result = await result.json();
             awaitingVideo[`${result.renderID}`] = { url: null, done: 0, username: username };
 
@@ -526,7 +515,7 @@ function renderReplay(replay, username) {
  * @returns {Promise}
  */
 function deleteUser(id) {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
         users.findOne({ userId: id }).then(async (user) => {
             await toggleChannel(user.twitch, false);
             await users.deleteOne({ userId: user.userId });
@@ -547,7 +536,9 @@ function deleteUser(id) {
  * @returns {Promise}
  */
 function sendDM(user, message) {
-    return discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user).send(message);
+    return new Promise((resolve) => {
+        discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user).send(message).then(() => resolve());
+    });
 }
 
 
@@ -560,20 +551,22 @@ function sendDM(user, message) {
  * @param {String} icon 
  * @param {Array} fields 
  * @param {String} image
- * @returns {Boolean}
+ * @returns {Promise}
  */
 function postEvent(title, url, description, type, icon, fields = [], image) {
-    return discordClient.guilds.cache.get(process.env.DISCORD_GUILD).channels.cache.find(x => x.name == "events").send({ embeds: [
-        new MessageEmbed()
-        .setColor("#FD7CB6")
-        .setTitle(title)
-        .setURL(url)
-        .setDescription(description)
-        .setAuthor({ name: type, iconURL: icon })
-        .addFields(fields)
-        .setImage(image)
-        .setTimestamp()
-    ]});
+    return new Promise((resolve) => {
+        discordClient.guilds.cache.get(process.env.DISCORD_GUILD).channels.cache.find(x => x.name == "events").send({ embeds: [
+            new MessageEmbed()
+            .setColor("#FD7CB6")
+            .setTitle(title)
+            .setURL(url)
+            .setDescription(description)
+            .setAuthor({ name: type, iconURL: icon })
+            .addFields(fields)
+            .setImage(image)
+            .setTimestamp()
+        ]}).then(() => resolve());
+    });
 }
 
 /**
@@ -583,7 +576,11 @@ function postEvent(title, url, description, type, icon, fields = [], image) {
  * @returns {Promise}
  */
 function setRole(user, role) {
-    discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user).roles.set([]).then(() => {
-        return discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user).roles.add(discordClient.guilds.cache.get(process.env.DISCORD_GUILD).roles.cache.find(r => r.name == role).id)
+    return new Promise((resolve) => {
+        discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user).roles.set([]).then(() => {
+            discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user)
+            .roles.add(discordClient.guilds.cache.get(process.env.DISCORD_GUILD).roles.cache.find(r => r.name == role).id)
+            .then(() => resolve());
+        });
     });
 }

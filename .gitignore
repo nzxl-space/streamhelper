@@ -4,10 +4,6 @@ package-lock.json
 # config
 *.env
 storage.db
-maps/*
-# build stuff
-src/local-client-app/bin
-src/local-client-app/obj
-src/static/client.exe
+cache/*
 # vs settings
 .vscode
