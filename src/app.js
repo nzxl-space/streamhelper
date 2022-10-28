@@ -128,7 +128,7 @@ let activeUsers, users, mapData;
                     }
 
                     if(!twitchClient.getChannels().includes(`#${user.twitch}`))
-                        await toggleChannel(user.twitch, true);
+                        await toggleChannel(user.twitch);
 
                     banchoClient.osuApi.user.getBest(user.osu).then(scores => {
                         scores.forEach(score => {
