@@ -144,7 +144,7 @@ let activeUsers, users, mapData;
                                             users.updateOne({ userId: user.userId }, { $set: { [`replays.${score.beatmapId}`]: `${url}` }});
 
                                             if(user["silenced"] && user["silenced"] == false) {
-                                                twitchClient.say(`#${user.twitch}`, `/me A replay of your new top play is available here: ${url}`);
+                                                twitchClient.say(`#${user.twitch}`, `/me ‼️ New top play recorded! You can watch it here: ${url} 🤙`);
                                             }
                                         });
                                     });
@@ -235,23 +235,23 @@ let activeUsers, users, mapData;
                     if(command.toLowerCase() == "silence") {
                         if(tags["mod"] || tags["username"] == channel.replace("#", "")) {
                             await users.updateOne({ userId: user.userId }, [ { $set: { silenced: { $eq: [false, "$silenced"] } } } ]);
-                            return twitchClient.say(channel, `» ${ !user["silenced"] ? "Silenced" : "Enabled"} all bot messages for this channel`);
+                            return twitchClient.reply(channel, `» ${ !user["silenced"] ? "Silenced" : "Enabled"} all bot messages for this channel`, tags["id"]);
                         }
                     }
 
                     if(command.toLowerCase() == "blacklist") {
                         if(tags["mod"] || tags["username"] == channel.replace("#", "")) {
                             if(args.length <= 0)
-                                return twitchClient.say(channel, `» Blacklisted users: ${user["blacklist"] && user["blacklist"].length >= 1 ? user["blacklist"].join(", ") : "None"}`);
+                                return twitchClient.reply(channel, `» Blacklisted users: ${user["blacklist"] && user["blacklist"].length >= 1 ? user["blacklist"].join(", ") : "None"}`, tags["id"]);
 
                             let fixed = args[0].match(/[a-zA-Z0-9_]+/g, "").join("").trim().toLowerCase();
                             if(user["blacklist"] && user["blacklist"].includes(fixed)) {
                                 await users.updateOne({ userId: user.userId }, { $pull: { blacklist: fixed } });
-                                return twitchClient.say(channel, `» Specified user was removed from the blacklist`);
+                                return twitchClient.reply(channel, `» Specified user was removed from the blacklist`, tags["id"]);
                             }
 
                             await users.updateOne({ userId: user.userId }, [ { $set: { blacklist: { $ifNull: [ { $concatArrays: ["$blacklist", [fixed]] }, [fixed] ] } } } ]);
-                            return twitchClient.say(channel, `» Specified user is now blacklisted from the bot`);
+                            return twitchClient.reply(channel, `» Specified user is now blacklisted from the bot`, tags["id"]);
                         }
                     }
 
@@ -261,10 +261,10 @@ let activeUsers, users, mapData;
 
                             let allowedPrefixes = ["!", "+", ":", "-", "#", ".", ";", "@", "$", "=", "~", "_", "*", "&", "%"];
                             if(!allowedPrefixes.includes(args[0].trim()))
-                                return twitchClient.say(channel, `» This prefix is not allowed, please try one of these: ${allowedPrefixes.join("")}`);
+                                return twitchClient.reply(channel, `» This prefix is not allowed, please try one of these: ${allowedPrefixes.join("")}`, tags["id"]);
 
                             await users.updateOne({ userId: user.userId }, { $set: { prefix: args[0].trim() }});
-                            return twitchClient.say(channel, `» Prefix successfully changed`);
+                            return twitchClient.reply(channel, `» Prefix successfully changed`, tags["id"]);
                         }
                     }
 
@@ -274,15 +274,15 @@ let activeUsers, users, mapData;
                         case "nppp":
                         case "np":
                             if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].mapData)
-                                twitchClient.say(channel, `» ${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${command == "!nppp" ? `98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].mapData.url}`);
+                                twitchClient.reply(channel, `» ${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${command == "!nppp" ? `98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].mapData.url}`, tags["id"]);
                             break;
                         case "lastpp":
                         case "last":
                             if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap.mapData)
-                                twitchClient.say(channel, `» ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${command == "!lastpp" ? `98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`);
+                                twitchClient.reply(channel, `» ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${command == "!lastpp" ? `98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`, tags["id"]);
                             break;
                         case "help":
-                            twitchClient.say(channel, "» osu! commands: np | nppp, last | lastpp - Other commands: silence, blacklist, prefix");
+                            twitchClient.reply(channel, `» osu! commands: np | nppp, last | lastpp - Other commands: silence, blacklist, prefix`, tags["id"]);
                             break;
                     }
                 });

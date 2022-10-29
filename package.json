@@ -23,7 +23,7 @@
     "path": "^0.12.7",
     "socket.io": "^4.5.0",
     "socket.io-client": "^4.5.2",
-    "tmi.js": "^1.8.5"
+    "tmi.js": "github:tmijs/tmi.js"
   },
   "devDependencies": {
     "eslint": "^7.32.0"
