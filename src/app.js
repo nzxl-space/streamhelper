@@ -502,7 +502,7 @@ function renderReplay(replay, username) {
         replayForm.append("verificationKey", process.env.OSURENDER);
 
         // Danser Settigns
-        replayForm.append("skin", "1695");
+        replayForm.append("skin", "3049");
         replayForm.append("customSkin", "true");
         replayForm.append("globalVolume", "50");
         replayForm.append("musicVolume", "50");
