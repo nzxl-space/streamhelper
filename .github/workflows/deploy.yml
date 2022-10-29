@@ -16,10 +16,10 @@ jobs:
         with:
           node-version: 16
       
-      - name: Run ESLint passing check
-        uses: stefanoeb/eslint-action@1.0.2
-        with:
-          files: src/
+      # - name: Run ESLint passing check
+      #   uses: stefanoeb/eslint-action@1.0.2
+      #   with:
+      #     files: src/
 
       - name: Deploy App
         uses: appleboy/ssh-action@master
