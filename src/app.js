@@ -118,9 +118,9 @@ let activeUsers, users, mapData;
                             return await users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
                         }
                         
-                        matchedUsername = activity[0].assets.largeText.match(/^\w+/);
+                        matchedUsername = activity[0].assets.largeText.match(/^(.*?)\(rank\s#(?:\d+)(?:,\d{1,3}|,\d{1,3},\d{1,3})?\)/);
                         if(matchedUsername && matchedUsername.length >= 1) {
-                            await users.updateOne({ userId: user.userId }, { $set: { osu: matchedUsername[0] }});
+                            await users.updateOne({ userId: user.userId }, { $set: { osu: matchedUsername[1].trim() }});
                             await setRole(user.userId, ["regular"]);
                         } else {
                             return await users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
