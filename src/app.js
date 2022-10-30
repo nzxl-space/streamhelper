@@ -278,8 +278,10 @@ let activeUsers, users, mapData;
                             break;
                         case "lastpp":
                         case "last":
-                            if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap.mapData)
+                            if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap) {
+                                if(!currentlyPlaying[`${channel}`].previousMap["mapData"]) return;
                                 twitchClient.reply(channel, `» ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${command.toLowerCase() == "lastpp" ? `98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`, tags["id"]);
+                            }
                             break;
                         case "help":
                             twitchClient.reply(channel, `» osu! commands: np | nppp, last | lastpp - Other commands: silence, blacklist, prefix`, tags["id"]);
