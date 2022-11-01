@@ -4,12 +4,14 @@ process.noDeprecation = true;
 const Regex = {
     setId: /(?<=beatmapsets\/|\/s\/)\d+/,
     beatmapId: /(?<=beatmaps\/|b\/|#osu\/|#taiko\/|#fruits\/|#mania\/)\d+/,
-    beatmapMods: /(?<=\+)(?:NF|EZ|HD|HR|(SD|PF)|(NC|DT)|RX|HT|FL|SO)+/ig
+    beatmapMods: /(?<=\+)(?:NF|EZ|HD|HR|(SD|PF)|(NC|DT)|RX|HT|FL|SO)+/ig,
+    Accuracy: /100[%]|[123456789][0-9][%]|[0-9][%]/g
 };
 const moment = require("moment");
 const path = require("path");
 const fetch = require("node-fetch-retry");
 const FormData = require("form-data");
+const clone = require("clone");
 const currentlyPlaying = {};
 const awaitingVideo = {};
 
@@ -212,7 +214,7 @@ let activeUsers, users, mapData;
             twitchClient.on("message", async (channel, tags, message, self) => {
                 if(self) return;
 
-                let beatmapId = message.match(Regex.beatmapId), setId = message.match(Regex.setId), mods = message.match(Regex.beatmapMods);
+                let beatmapId = message.match(Regex.beatmapId), setId = message.match(Regex.setId), mods = message.match(Regex.beatmapMods), accuracy = message.match(Regex.Accuracy);
                 if(beatmapId || setId) {
                     let map = setId && setId.length >= 1 ? await banchoClient.osuApi.beatmaps.getBySetId(setId[0]) : await banchoClient.osuApi.beatmaps.getByBeatmapId(beatmapId[0]);
                     if(!map || map && map.length <= 0) return;
@@ -270,22 +272,45 @@ let activeUsers, users, mapData;
 
                     if(user["silenced"] && user["silenced"] == true) return;
 
-                    switch (command.toLowerCase()) {
-                        case "nppp":
-                        case "np":
-                            if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].mapData)
-                                twitchClient.reply(channel, `» ${currentlyPlaying[`${channel}`].name} | ${moment(currentlyPlaying[`${channel}`].mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].mapData.ar} | ${command.toLowerCase() == "nppp" ? `98%: ${currentlyPlaying[`${channel}`].ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].mapData.url}`, tags["id"]);
-                            break;
-                        case "lastpp":
-                        case "last":
-                            if(currentlyPlaying[`${channel}`] && currentlyPlaying[`${channel}`].previousMap) {
-                                if(!currentlyPlaying[`${channel}`].previousMap["mapData"]) return;
-                                twitchClient.reply(channel, `» ${currentlyPlaying[`${channel}`].previousMap.name} | ${moment(currentlyPlaying[`${channel}`].previousMap.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(currentlyPlaying[`${channel}`].previousMap.mapData["difficulty_rating"] * 100) / 100} - AR${currentlyPlaying[`${channel}`].previousMap.mapData.ar} | ${command.toLowerCase() == "lastpp" ? `98%: ${currentlyPlaying[`${channel}`].previousMap.ppData.A}pp - 99%: ${currentlyPlaying[`${channel}`].previousMap.ppData.S}pp - 100%: ${currentlyPlaying[`${channel}`].previousMap.ppData.X}pp |` : ""} ${currentlyPlaying[`${channel}`].previousMap.mapData.url}`, tags["id"]);
+                    if(command.toLowerCase() == "np" || command.toLowerCase() == "last") {
+                        let map = command.toLowerCase() == "np" ? currentlyPlaying[`${channel}`] : currentlyPlaying[`${channel}`].previousMap;
+                        if(!map) return twitchClient.reply(channel, `» No data available, try again later 😭`, tags["id"]);
+
+                        return twitchClient.reply(channel, `» ${map.name} | ${moment(map.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(map.mapData["difficulty_rating"] * 100) / 100} - AR${map.mapData.ar} | ${map.mapData.url}`, tags["id"]);
+                    }
+
+                    if(command.toLowerCase() == "nppp" || command.toLowerCase() == "lastpp") {
+                        let map = command.toLowerCase() == "nppp" ? clone(currentlyPlaying[`${channel}`]) : clone(currentlyPlaying[`${channel}`].previousMap);
+                        if(!map) return twitchClient.reply(channel, `» No data available, try again later 😭`, tags["id"]);
+
+                        if(args.length >= 1 && mods != null || args.length >= 1 && accuracy != null) {
+                            let recalculate = await pp.calculate({
+                                beatmapId: map.mapData.id,
+                                mods: mods != null ? mods.join("").toUpperCase() : "",
+                                accuracy: accuracy != null ? [95, 99, 100, Number(accuracy.join("").replace(/%/, ""))] : undefined
+                            });
+                            
+                            // stats
+                            map.mapData["total_length"] = recalculate.beatmapInfo.length;
+                            map.mapData["difficulty_rating"] = recalculate.difficulty.starRating;
+                            map.mapData["ar"] = Math.round(recalculate.difficulty.approachRate * 100) / 100;
+
+                            // pp
+                            map.ppData["A"] = Math.round(recalculate.performance[0].totalPerformance);
+                            map.ppData["S"] = Math.round(recalculate.performance[1].totalPerformance);
+                            map.ppData["X"] = Math.round(recalculate.performance[2].totalPerformance);
+
+                            // custom pp for accuracy
+                            if(accuracy != null) {
+                                map.ppData["C"] = Math.round(recalculate.performance[3].totalPerformance);
                             }
-                            break;
-                        case "help":
-                            twitchClient.reply(channel, `» osu! commands: np | nppp, last | lastpp - Other commands: silence, blacklist, prefix`, tags["id"]);
-                            break;
+                        }
+
+                        return twitchClient.reply(channel, `» ${map.name} ${mods ? "+"+mods.join("").toUpperCase() : ""} | ${moment(map.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(map.mapData["difficulty_rating"] * 100) / 100} - AR${map.mapData.ar} | ${accuracy != null ? `${accuracy.join("")}: ${map.ppData.C}pp` : `98%: ${map.ppData.A}pp - 99%: ${map.ppData.S}pp - 100%: ${map.ppData.X}pp`} | ${map.mapData.url}`, tags["id"]);
+                    }
+
+                    if(command.toLowerCase() == "help") {
+                        return twitchClient.reply(channel, `» osu! commands: np | nppp, last | lastpp - Other commands: silence, blacklist, prefix`, tags["id"]);
                     }
                 });
             });

@@ -23,7 +23,7 @@ After checking that you have both a working *Discord Presence* and a linked *Twi
 1. [x] Twitch chat commands
 - !np - Show current playing map
 - !last - Show previous played map
-- *You can add pp to the commands (eg. !nppp) to show the performance values of a map. Currently only works without mod modifiers but will change in the future*
+- *You can add `pp` to the commands to show the performance values of a map. Example: !nppp 94% +HDHR - !nppp 100% - !nppp +DT*
 2. [x] Automatic rendered replays using o!rdr (Danser)
 3. [ ] Realtime embedded OBS overlays for Performance, Score, etc.
 4. [ ] Beatmap recommendation algorithm (Database population already running 🏃‍♂️)
@@ -81,6 +81,5 @@ $ node .
 GLHF! 😎
 
 # Roadmap and Contributors
-*There is only one goal: Don't fuck up the code too badly.  
-I do this as a hobby in my free time, so don't expect the code to be too high quality!*
-If you find any issues or have feature requests, feel free to open up a PR. I'll gladly look into them.
+*Fix code*  
+If you find any issues or have feature requests, feel free to open up a PR!!!
