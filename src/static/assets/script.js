@@ -2,8 +2,9 @@ var script = $("script[src*=script]");
 
 $(window).on("load", () => {
     $("body").hide().fadeIn("slow");
+    // eslint-disable-next-line no-undef
     Swal.fire({
-        imageUrl: "/assets/logo.svg",
+        imageUrl: "/assets/img/logo.svg",
         imageWidth: 140,
         imageHeight: 50,
         title: "Welcome!",
@@ -16,10 +17,11 @@ $(window).on("load", () => {
             popup: "animated fadeOutDown faster",
         }
     }).then(() => {
+        // eslint-disable-next-line no-undef
         Swal.fire({
             title: "Link your Discord",
             text: "This is needed to fetch important data from your profile.",
-            footer: "<img class='gif' src='/assets/activities.gif'/><a class='showGif'>How?</a>",
+            footer: "<img class='gif' src='/assets/img/activities.gif'/><a class='showGif'>How?</a>",
             confirmButtonText: "Authorize",
             allowOutsideClick: false,
             showClass: {
@@ -30,7 +32,7 @@ $(window).on("load", () => {
             }
         }).then(() => {
             var discordPopup = window.open(script.attr("data-discord"), "popUpWindow", "height=750,width=500");
-            
+            // eslint-disable-next-line no-undef
             Swal.fire({
                 title: "Waiting for authorization..",
                 showConfirmButton: false,
@@ -39,6 +41,7 @@ $(window).on("load", () => {
                     var checkPopup = setInterval(() => {
                         if(discordPopup.closed) {
                             clearInterval(checkPopup);
+                            // eslint-disable-next-line no-undef
                             Swal.fire({
                                 icon: "success",
                                 title: "Discord Linked",

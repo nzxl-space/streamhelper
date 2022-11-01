@@ -76,7 +76,7 @@ let activeUsers, users, mapData;
 (() => {
     mongoClient.connect(async err => {
         if(err) return console.log("MongoDB failed!");
-        db = mongoClient.db("osu");
+        const db = mongoClient.db("osu");
 
         users = db.collection("users");
         mapData = db.collection("map_data");
@@ -118,7 +118,7 @@ let activeUsers, users, mapData;
                             return await users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
                         }
                         
-                        matchedUsername = activity[0].assets.largeText.match(/^(.*?)\(rank\s#(?:\d+)(?:,\d{1,3}|,\d{1,3},\d{1,3})?\)/);
+                        let matchedUsername = activity[0].assets.largeText.match(/^(.*?)\(rank\s#(?:\d+)(?:,\d{1,3}|,\d{1,3},\d{1,3})?\)/);
                         if(matchedUsername && matchedUsername.length >= 1) {
                             await users.updateOne({ userId: user.userId }, { $set: { osu: matchedUsername[1].trim() }});
                             await setRole(user.userId, ["regular"]);

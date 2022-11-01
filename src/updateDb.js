@@ -7,8 +7,8 @@ const pp = new BeatmapCalculator();
 (() => {
     mongoClient.connect(async err => {
         if(err) return console.log("MongoDB failed!");
-        db = mongoClient.db("osu");
-        mapData = db.collection("map_data");
+        const db = mongoClient.db("osu");
+        const mapData = db.collection("map_data");
 
         let mapIds = await mapData.distinct("setId");
         mapIds.forEach((m, i) => {
@@ -19,7 +19,7 @@ const pp = new BeatmapCalculator();
 
                         let map = await pp.calculate({ fileURL: `https://osu.ppy.sh/osu/${r.setId}` });
                         if(map.beatmapInfo.version == r.mapData.version) {
-                            mapName = `${map.beatmapInfo.artist} - ${map.beatmapInfo.title} [${map.beatmapInfo.version}]`;
+                            let mapName = `${map.beatmapInfo.artist} - ${map.beatmapInfo.title} [${map.beatmapInfo.version}]`;
                             await mapData.updateOne({ setId: m }, { $set: { name: mapName }});
 
                             console.log(`${map.beatmapInfo.artist} - ${map.beatmapInfo.title} [${map.beatmapInfo.version}] ${(i+"/"+mapIds.length)}`);

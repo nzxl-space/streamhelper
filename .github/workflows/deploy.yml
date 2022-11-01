@@ -16,12 +16,14 @@ jobs:
         with:
           node-version: 16
       
-      # - name: Run ESLint passing check
-      #   uses: stefanoeb/eslint-action@1.0.2
-      #   with:
-      #     files: src/
+      - name: Install Packages
+        run: |
+          apt install git
 
-      - name: Deploy App
+      - name: Run Linter
+        uses: stefanoeb/eslint-action@1.0.2
+
+      - name: Deploy App to Remote
         uses: appleboy/ssh-action@master
         with:
           host: ${{secrets.SSH_HOST}}
