@@ -19,6 +19,7 @@ jobs:
       - name: Install Packages
         run: |
           sudo apt install git
+          export PATH="$PATH:/usr/bin/git"
 
       - name: Run Linter
         uses: stefanoeb/eslint-action@1.0.2
