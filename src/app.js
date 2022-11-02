@@ -182,7 +182,7 @@ let activeUsers, users, mapData;
                                     `mapped by ${map.mapData.creator} | ${moment(map.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(map.mapData.difficulty_rating * 100) / 100} - AR${map.mapData.ar}`,
                                     `A new map has been added to the database!`, 
                                     `https://i.imgur.com/NJt4fjH.png`, [
-                                        { name: "98% FC", value: `${Math.round(map.score.performance[0].totalPerformance)}pp`, inline: true },
+                                        { name: "95% FC", value: `${Math.round(map.score.performance[0].totalPerformance)}pp`, inline: true },
                                         { name: "99% FC", value: `${Math.round(map.score.performance[1].totalPerformance)}pp`, inline: true },
                                         { name: "100% FC", value: `${Math.round(map.score.performance[2].totalPerformance)}pp`, inline: true }
                                     ], 
@@ -306,7 +306,7 @@ let activeUsers, users, mapData;
                             }
                         }
 
-                        return twitchClient.reply(channel, `» ${map.name} ${mods ? "+"+mods.join("").toUpperCase() : ""} | ${moment(map.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(map.mapData["difficulty_rating"] * 100) / 100} - AR${map.mapData.ar} | ${accuracy != null ? `${accuracy.join("")}: ${map.ppData.C}pp` : `98%: ${map.ppData.A}pp - 99%: ${map.ppData.S}pp - 100%: ${map.ppData.X}pp`} | ${map.mapData.url}`, tags["id"]);
+                        return twitchClient.reply(channel, `» ${map.name} ${mods ? "+"+mods.join("").toUpperCase() : ""} | ${moment(map.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(map.mapData["difficulty_rating"] * 100) / 100} - AR${map.mapData.ar} | ${accuracy != null ? `${accuracy.join("")}: ${map.ppData.C}pp` : `95%: ${map.ppData.A}pp - 99%: ${map.ppData.S}pp - 100%: ${map.ppData.X}pp`} | ${map.mapData.url}`, tags["id"]);
                     }
 
                     if(command.toLowerCase() == "help") {
