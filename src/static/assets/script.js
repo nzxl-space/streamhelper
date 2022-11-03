@@ -20,7 +20,7 @@ $(window).on("load", () => {
         // eslint-disable-next-line no-undef
         Swal.fire({
             title: "Link your Discord",
-            text: "This is needed to fetch important data from your profile.<br><i>Notice: This will add you to a guild, where the bot can read your profile.</i>",
+            html: "This is needed to fetch important data from your profile.<br><i>Notice: This will add you to a guild, where the bot can read your profile.</i>",
             footer: "<img class='gif' src='/assets/img/activities.gif'/><a class='showGif'>How?</a>",
             confirmButtonText: "Authorize",
             allowOutsideClick: false,
