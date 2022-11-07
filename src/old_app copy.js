@@ -1,6 +1,4 @@
 process.noDeprecation = true;
-const c = require("../constants.js");
-
 // Utils
 const Regex = {
     setId: /(?<=beatmapsets\/|\/s\/)\d+/,
@@ -10,19 +8,12 @@ const Regex = {
 };
 const moment = require("moment");
 const path = require("path");
-const fetch = require("node-fetch-retry");
-const FormData = require("form-data");
 const clone = require("clone");
 const currentlyPlaying = {};
-const awaitingVideo = {};
 
 require("dotenv").config();
 require("log-prefix")(() => { return `[nzxl.space | ${moment(Date.now()).format("HH:mm:ss")}]`; });
 process.on("unhandledRejection", error => console.error(error));
-
-// MongoDB
-const { MongoClient, ServerApiVersion } = require("mongodb");
-const mongoClient = new MongoClient(process.env.MONGODB, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1, monitorCommands: true });
 
 // tmi.js
 const tmi = require("tmi.js");
@@ -32,10 +23,6 @@ const twitchClient = new tmi.Client({
         password: process.env.TWITCH_PASSWORD
     }
 });
-let twitchApi = {
-    accessToken: null,
-    expires: 0
-};
 
 // osu! Bancho
 const Banchojs = require("bancho.js");
@@ -47,17 +34,8 @@ const banchoClient = new Banchojs.BanchoClient({
 // const pp = require("rosu-pp");
 const { BeatmapCalculator } = require("@kionell/osu-pp-calculator");
 const pp = new BeatmapCalculator();
-let osuApi = {
-    accessToken: null,
-    expires: 0
-};
 
 // Discord
-const { Client, Intents, MessageEmbed } = require("discord.js");
-const discordClient = new Client({
-    partials: ["CHANNEL"],
-    intents: [ Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MEMBERS, Intents.FLAGS.GUILD_PRESENCES, Intents.FLAGS.DIRECT_MESSAGES, Intents.FLAGS.DIRECT_MESSAGE_TYPING ]
-});
 const DiscordOauth2 = require("discord-oauth2");
 const oauth = new DiscordOauth2();
 
@@ -70,34 +48,8 @@ app.set("views", path.join(__dirname, "static"));
 app.use(express.static(path.join(__dirname, "static")));
 const httpServer = createServer(app);
 
-let activeUsers, users, mapData;
+let activeUsers, users;
 (() => {
-
-    discordClient.on("presenceUpdate", (_old, _new) => { 
-        if(!activeUsers.includes(_new.userId) || _new.guild.id !== process.env.DISCORD_GUILD) return;
-
-        users.findOne({ userId: _new.userId }).then(async (user) => {
-
-            let mapName = activity[0].details;
-            if(!mapName) return;
-
-            if(!currentlyPlaying[`#${user.twitch}`] || currentlyPlaying[`#${user.twitch}`].name != mapName) {
-                mapData.findOne({ name: mapName }).then(async (map) => {
-
-                    currentlyPlaying[`#${user.twitch}`] = {
-                        name: mapName,
-                        mapData: map.mapData,
-                        ppData: {
-                            A: map.score ? Math.round(map.score.performance[0].totalPerformance) : Math.round(map.ppData.A),
-                            S: map.score ? Math.round(map.score.performance[1].totalPerformance) : Math.round(map.ppData.S),
-                            X: map.score ? Math.round(map.score.performance[2].totalPerformance) : Math.round(map.ppData.X)
-                        },
-                        previousMap: currentlyPlaying[`#${user.twitch}`]
-                    }
-                });
-            }
-        });
-    });
 
     twitchClient.on("message", async (channel, tags, message, self) => {
         if(self) return;

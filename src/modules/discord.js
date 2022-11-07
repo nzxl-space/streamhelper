@@ -1,6 +1,7 @@
 const { Client, Intents, MessageEmbed } = require("discord.js");
 
-const { mongoDB, twitch, bancho } = require("../app");
+const { mongoDB, twitch } = require("../app");
+var bancho = require("../app").bancho;
 
 const presencePattern = /^(.*?)\(rank\s#(?:\d+)(?:,\d{1,3}|,\d{1,3},\d{1,3})?\)/;
 
@@ -85,7 +86,10 @@ module.exports = class Discord {
                 let mapName = activity[0].details;
                 if(!mapName) return;
 
-                if(this.currentlyPlaying[`${user.twitch}`] && this.currentlyPlaying[`${user.twitch}`].name != mapName) {
+                if(!this.currentlyPlaying[`${user.twitch}`] || this.currentlyPlaying[`${user.twitch}`] && this.currentlyPlaying[`${user.twitch}`].name != mapName) {
+                    if(bancho == undefined) {
+                        bancho = require("../app").bancho;
+                    }
                     let map = await bancho.getBeatmap(mapName);
 
                     this.currentlyPlaying[`${user.twitch}`] = {

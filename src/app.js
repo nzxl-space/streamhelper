@@ -11,14 +11,6 @@ require("log-prefix")(() => { return `[nzxl.space | ${require("moment")(Date.now
 
     // -------------------------------
 
-    const Twitch = require("./modules/twitch");
-    let twitch = new Twitch(process.env.TWITCH_USERNAME, process.env.TWITCH_PASSWORD, process.env.TWITCH_CLIENT_ID, process.env.TWITCH_CLIENT_SECRET);
-
-    await twitch.connect().then(console.log(`Twitch connected as ${process.env.TWITCH_USERNAME}!`));
-    module.exports.twitch = twitch;
-
-    // -------------------------------
-
     const Discord = require("./modules/discord");
     let discord = new Discord(process.env.DISCORD_TOKEN, process.env.DISCORD_GUILD, process.env.DOWNLOADURL);
 
@@ -26,7 +18,7 @@ require("log-prefix")(() => { return `[nzxl.space | ${require("moment")(Date.now
     module.exports.discord = discord;
 
     console.log(`Discord connected as ${discord.discordClient.user.tag}!`);
-    
+
     // -------------------------------
 
     const Bancho = require("./modules/bancho");
@@ -34,6 +26,14 @@ require("log-prefix")(() => { return `[nzxl.space | ${require("moment")(Date.now
 
     await bancho.connect().then(console.log(`Bancho connected as ${process.env.OSU_USERNAME}!`));
     module.exports.bancho = bancho;
+
+    // -------------------------------
+
+    const Twitch = require("./modules/twitch");
+    let twitch = new Twitch(process.env.TWITCH_USERNAME, process.env.TWITCH_PASSWORD, process.env.TWITCH_CLIENT_ID, process.env.TWITCH_CLIENT_SECRET);
+
+    await twitch.connect().then(console.log(`Twitch connected as ${process.env.TWITCH_USERNAME}!`));
+    module.exports.twitch = twitch;
 })();
 
 

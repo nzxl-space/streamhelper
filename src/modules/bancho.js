@@ -184,7 +184,7 @@ module.exports = class Bancho {
             
             if(!map) {
                 let beatmap = await this.banchoClient.osuApi.beatmaps.getByBeatmapId(id);
-                map = await this.addBeatmap(`${beatmap[0].artist} - ${beatmap[0].title} [${beatmap[0].version}]`, 0);
+                map = await this.addBeatmap(beatmap.length >= 1 ? `${beatmap[0].artist} - ${beatmap[0].title} [${beatmap[0].version}]` : id, 0);
             }
 
             resolve(map);
