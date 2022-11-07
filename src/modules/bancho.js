@@ -179,11 +179,13 @@ module.exports = class Bancho {
     getBeatmap(id) {
         return new Promise(async (resolve) => {
             let map = await mongoDB.mapData.findOne({ 
-                $or: [{ mapData: { $elemMatch: { id: id } }}, { name: id }]
+                $or: [{ mapData: { $elemMatch: { id: id } }}, { mapData: { $elemMatch: { beatmapset_id: id } }}, { name: id }]
             });
             
             if(!map) {
                 let beatmap = await this.banchoClient.osuApi.beatmaps.getByBeatmapId(id);
+                if(beatmap.length <= 0) beatmap = await this.banchoClient.osuApi.beatmaps.getBySetId(id);
+
                 map = await this.addBeatmap(beatmap.length >= 1 ? `${beatmap[0].artist} - ${beatmap[0].title} [${beatmap[0].version}]` : id, 0);
             }
 

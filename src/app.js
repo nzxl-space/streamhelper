@@ -1,4 +1,5 @@
 process.noDeprecation = true;
+process.on("unhandledRejection", error => console.error(error));
 require("dotenv").config();
 require("log-prefix")(() => { return `[nzxl.space | ${require("moment")(Date.now()).format("HH:mm:ss")}]` });
 

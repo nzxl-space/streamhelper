@@ -1,39 +1,11 @@
 process.noDeprecation = true;
-// Utils
-const Regex = {
-    setId: /(?<=beatmapsets\/|\/s\/)\d+/,
-    beatmapId: /(?<=beatmaps\/|b\/|#osu\/|#taiko\/|#fruits\/|#mania\/)\d+/,
-    beatmapMods: /(?<=\+)(?:NF|EZ|HD|HR|(SD|PF)|(NC|DT)|RX|HT|FL|SO)+/ig,
-    Accuracy: /100[%]|[123456789][0-9][%]|[0-9][%]/g
-};
+
 const moment = require("moment");
 const path = require("path");
-const clone = require("clone");
-const currentlyPlaying = {};
 
 require("dotenv").config();
 require("log-prefix")(() => { return `[nzxl.space | ${moment(Date.now()).format("HH:mm:ss")}]`; });
 process.on("unhandledRejection", error => console.error(error));
-
-// tmi.js
-const tmi = require("tmi.js");
-const twitchClient = new tmi.Client({
-    identity: {
-        username: process.env.TWITCH_USERNAME,
-        password: process.env.TWITCH_PASSWORD
-    }
-});
-
-// osu! Bancho
-const Banchojs = require("bancho.js");
-const banchoClient = new Banchojs.BanchoClient({
-    username: process.env.OSU_USERNAME,
-    password: process.env.OSU_PASSWORD,
-    apiKey: process.env.OSU_API_KEY
-});
-// const pp = require("rosu-pp");
-const { BeatmapCalculator } = require("@kionell/osu-pp-calculator");
-const pp = new BeatmapCalculator();
 
 // Discord
 const DiscordOauth2 = require("discord-oauth2");
@@ -50,110 +22,6 @@ const httpServer = createServer(app);
 
 let activeUsers, users;
 (() => {
-
-    twitchClient.on("message", async (channel, tags, message, self) => {
-        if(self) return;
-
-        let beatmapId = message.match(Regex.beatmapId), setId = message.match(Regex.setId), mods = message.match(Regex.beatmapMods), accuracy = message.match(Regex.Accuracy);
-        if(beatmapId || setId) {
-            let map = setId && setId.length >= 1 ? await banchoClient.osuApi.beatmaps.getBySetId(setId[0]) : await banchoClient.osuApi.beatmaps.getByBeatmapId(beatmapId[0]);
-            if(!map || map && map.length <= 0) return;
-
-            if(beatmapId && beatmapId.length >= 1)
-                map = map.filter(x => x.id == beatmapId[0]);
-
-            users.findOne({ twitch: channel.replace("#", "") }).then(user => {
-                if(!user["osu"] || user["blacklist"] && user["blacklist"].includes(tags["username"])) return;
-                banchoClient.getUser(user.osu).sendMessage(`${tags["username"]} » [https://osu.ppy.sh/b/${map[0].beatmapId} ${map[0].artist} - ${map[0].title} [${map[0].version}]] ${mods ? `+${mods.toString().toUpperCase()}` : ""} | ${moment(map[0].totalLength*1000).format("mm:ss")} - ★ ${Math.round(map[0].difficultyRating * 100) / 100} - AR${map[0].approachRate}`);
-            });
-
-            return;
-        }
-
-        users.findOne({ twitch: channel.replace("#", "") }).then(async user => {
-            if(!message.startsWith(user["prefix"] ? user["prefix"] : "!")) return;
-            let [command, ...args] = message.slice(user["prefix"] ? user["prefix"].length : 1).trim().split(" ");
-
-            if(command.toLowerCase() == "silence") {
-                if(tags["mod"] || tags["username"] == channel.replace("#", "")) {
-                    await users.updateOne({ userId: user.userId }, [ { $set: { silenced: { $eq: [false, "$silenced"] } } } ]);
-                    return twitchClient.reply(channel, `» ${ !user["silenced"] ? "Silenced" : "Enabled"} all bot messages for this channel`, tags["id"]);
-                }
-            }
-
-            if(command.toLowerCase() == "blacklist") {
-                if(tags["mod"] || tags["username"] == channel.replace("#", "")) {
-                    if(args.length <= 0)
-                        return twitchClient.reply(channel, `» Blacklisted users: ${user["blacklist"] && user["blacklist"].length >= 1 ? user["blacklist"].join(", ") : "None"}`, tags["id"]);
-
-                    let fixed = args[0].match(/[a-zA-Z0-9_]+/g, "").join("").trim().toLowerCase();
-                    if(user["blacklist"] && user["blacklist"].includes(fixed)) {
-                        await users.updateOne({ userId: user.userId }, { $pull: { blacklist: fixed } });
-                        return twitchClient.reply(channel, `» Specified user was removed from the blacklist`, tags["id"]);
-                    }
-
-                    await users.updateOne({ userId: user.userId }, [ { $set: { blacklist: { $ifNull: [ { $concatArrays: ["$blacklist", [fixed]] }, [fixed] ] } } } ]);
-                    return twitchClient.reply(channel, `» Specified user is now blacklisted from the bot`, tags["id"]);
-                }
-            }
-
-            if(command.toLowerCase() == "prefix") {
-                if(tags["mod"] || tags["username"] == channel.replace("#", "")) {
-                    if(args.length <= 0) return;
-
-                    let allowedPrefixes = ["!", "+", ":", "-", "#", ".", ";", "@", "$", "=", "~", "_", "*", "&", "%"];
-                    if(!allowedPrefixes.includes(args[0].trim()))
-                        return twitchClient.reply(channel, `» This prefix is not allowed, please try one of these: ${allowedPrefixes.join("")}`, tags["id"]);
-
-                    await users.updateOne({ userId: user.userId }, { $set: { prefix: args[0].trim() }});
-                    return twitchClient.reply(channel, `» Prefix successfully changed`, tags["id"]);
-                }
-            }
-
-            if(user["silenced"] && user["silenced"] == true) return;
-
-            if(command.toLowerCase() == "np" || command.toLowerCase() == "last") {
-                let map = command.toLowerCase() == "np" ? currentlyPlaying[`${channel}`] : currentlyPlaying[`${channel}`].previousMap;
-                if(!map) return twitchClient.reply(channel, `» No data available, try again later 😭`, tags["id"]);
-
-                return twitchClient.reply(channel, `» ${map.name} | ${moment(map.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(map.mapData["difficulty_rating"] * 100) / 100} - AR${map.mapData.ar} | ${map.mapData.url}`, tags["id"]);
-            }
-
-            if(command.toLowerCase() == "nppp" || command.toLowerCase() == "lastpp") {
-                let map = command.toLowerCase() == "nppp" ? clone(currentlyPlaying[`${channel}`]) : clone(currentlyPlaying[`${channel}`].previousMap);
-                if(!map) return twitchClient.reply(channel, `» No data available, try again later 😭`, tags["id"]);
-
-                if(args.length >= 1 && mods != null || args.length >= 1 && accuracy != null) {
-                    let recalculate = await pp.calculate({
-                        beatmapId: map.mapData.id,
-                        mods: mods != null ? mods.join("").toUpperCase() : "",
-                        accuracy: accuracy != null ? [95, 99, 100, Number(accuracy.join("").replace(/%/, ""))] : undefined
-                    });
-                    
-                    // stats
-                    map.mapData["total_length"] = recalculate.beatmapInfo.length;
-                    map.mapData["difficulty_rating"] = recalculate.difficulty.starRating;
-                    map.mapData["ar"] = Math.round(recalculate.difficulty.approachRate * 100) / 100;
-
-                    // pp
-                    map.ppData["A"] = Math.round(recalculate.performance[0].totalPerformance);
-                    map.ppData["S"] = Math.round(recalculate.performance[1].totalPerformance);
-                    map.ppData["X"] = Math.round(recalculate.performance[2].totalPerformance);
-
-                    // custom pp for accuracy
-                    if(accuracy != null) {
-                        map.ppData["C"] = Math.round(recalculate.performance[3].totalPerformance);
-                    }
-                }
-
-                return twitchClient.reply(channel, `» ${map.name} ${mods ? "+"+mods.join("").toUpperCase() : ""} | ${moment(map.mapData["total_length"]*1000).format("mm:ss")} - ★ ${Math.round(map.mapData["difficulty_rating"] * 100) / 100} - AR${map.mapData.ar} | ${accuracy != null ? `${accuracy.join("")}: ${map.ppData.C}pp` : `95%: ${map.ppData.A}pp - 99%: ${map.ppData.S}pp - 100%: ${map.ppData.X}pp`} | ${map.mapData.url}`, tags["id"]);
-            }
-
-            if(command.toLowerCase() == "help") {
-                return twitchClient.reply(channel, `» osu! commands: np | nppp, last | lastpp - Other commands: silence, blacklist, prefix`, tags["id"]);
-            }
-        });
-    });
 
     httpServer.listen(process.env.PORT || 2048, () => {
         console.log(`Listening on port ${httpServer.address().port}!`);
