@@ -77,31 +77,6 @@ let activeUsers, users, mapData;
         if(!activeUsers.includes(_new.userId) || _new.guild.id !== process.env.DISCORD_GUILD) return;
 
         users.findOne({ userId: _new.userId }).then(async (user) => {
-            let activity = _new.activities.filter(a => a.applicationId == "367827983903490050"); // osu!
-            if(!activity || activity && activity.length <= 0) return await toggleChannel(user.twitch, false);
-
-            if(user.osu == null) {
-                if(user["activityRetryCount"] && user.activityRetryCount >= 20) {
-                    await deleteUser(user.userId);
-                    await setRole(user.userId, ["on hold"]);
-                    return await sendDM(user.userId, "Hey, I've noticed that your osu! activity presence is not working correctly, therefore the beatmap requests will be disabled.\nhttps://osu.ppy.sh/wiki/en/Guides/Discord_Rich_Presence\nNotice: you shouldn't run osu! nor Discord as *Administrator*.\n\nAny data containing your info will be wiped from our systems. Make sure to re-authorize the access if you want to have the requests back enabled.");    
-                }
-
-                if(activity[0].assets == null || activity[0].assets && !activity[0].assets.largeText) {
-                    return await users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
-                }
-                
-                let matchedUsername = activity[0].assets.largeText.match(/^(.*?)\(rank\s#(?:\d+)(?:,\d{1,3}|,\d{1,3},\d{1,3})?\)/);
-                if(matchedUsername && matchedUsername.length >= 1) {
-                    await users.updateOne({ userId: user.userId }, { $set: { osu: matchedUsername[1].trim() }});
-                    await setRole(user.userId, ["regular"]);
-                } else {
-                    return await users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
-                }
-            }
-
-            if(!twitchClient.getChannels().includes(`#${user.twitch}`))
-                await toggleChannel(user.twitch);
 
             let mapName = activity[0].details;
             if(!mapName) return;

@@ -173,12 +173,15 @@ module.exports = class Bancho {
 
     /**
      * Get beatmap from database and insert if it doesn't exist
-     * @param {String|Number} id Beatmap ID
+     * @param {String|Number} id Beatmap ID or Name
      * @returns {Promise}
      */
     getBeatmap(id) {
         return new Promise(async (resolve) => {
-            let map = await mongoDB.mapData.findOne({ mapData: { $elemMatch: { id: id } }});
+            let map = await mongoDB.mapData.findOne({ 
+                $or: [{ mapData: { $elemMatch: { id: id } }}, { name: id }]
+            });
+            
             if(!map) {
                 let beatmap = await this.banchoClient.osuApi.beatmaps.getByBeatmapId(id);
                 map = await this.addBeatmap(`${beatmap[0].artist} - ${beatmap[0].title} [${beatmap[0].version}]`, 0);

@@ -1,6 +1,8 @@
 const { Client, Intents, MessageEmbed } = require("discord.js");
 
-const { mongoDB, twitch } = require("../app");
+const { mongoDB, twitch, bancho } = require("../app");
+
+const presencePattern = /^(.*?)\(rank\s#(?:\d+)(?:,\d{1,3}|,\d{1,3},\d{1,3})?\)/;
 
 module.exports = class Discord {
     constructor(token, guild, downloadURL) {
@@ -37,8 +39,66 @@ module.exports = class Discord {
 
             this.discordClient.on("guildMemberRemove", async (member) => await this.deleteUser(member.id));
 
-            this.discordClient.on("presenceUpdate", (_old, _new) => {
+            this.discordClient.on("presenceUpdate", async (_, presence) => {
+                if(!mongoDB.activeUsers.includes(presence.userId) || presence.guild.id !== this.guild) return;
 
+                let user = await mongoDB.users.findOne({ userId: presence.userId });
+                if(!user || user.length <= 0) return;
+
+                let activity = presence.activities.filter(p => p.applicationId == "367827983903490050");
+
+                if(user.osu == null) {
+                    if(user["activityRetryCount"] && user["activityRetryCount"] >= 20) {
+                        await this.deleteUser(user.userId);
+                        await this.updateRole(user.userId, "on hold");                        
+                        await this.sendMessage(
+                            this.buildEmbed(2, {
+                                title: `Beatmap Requests Disabled`,
+                                description: "We're having trouble finding your osu! username through your game activity.\nPlease make sure your game activities are working and re-authorize your account.\nMore informations at <#1024630491145588768>! 😎",
+                                url: `https://osu.nzxl.space/`,
+                                action: `𝒏𝒐𝒕𝒊𝒄𝒆`,
+                                footer: "presence_not_found"
+                            }),
+                        user.userId);
+                        return;
+                    }
+
+                    if(activity.length <= 0 || activity.length >= 1 && activity[0].assets == null) {
+                        await mongoDB.users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
+                        return;
+                    }
+
+                    if(activity[0].assets.largeText) {
+                        let matched = activity[0].assets.largeText.match(presencePattern);
+                        if(!matched || matched.length <= 0) {
+                            await mongoDB.users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
+                            return;
+                        }
+
+                        await mongoDB.users.updateOne({ userId: user.userId }, { $set: { osu: matched[1].trim() }});
+                        await this.updateRole(user.userId, "regular");
+                    }
+                }
+
+                if(activity.length <= 0) return;
+
+                let mapName = activity[0].details;
+                if(!mapName) return;
+
+                if(this.currentlyPlaying[`${user.twitch}`] && this.currentlyPlaying[`${user.twitch}`].name != mapName) {
+                    let map = await bancho.getBeatmap(mapName);
+
+                    this.currentlyPlaying[`${user.twitch}`] = {
+                        name: mapName,
+                        mapData: map.mapData,
+                        ppData: {
+                            A: map.ppData.A,
+                            S: map.ppData.S,
+                            X: map.ppData.X
+                        },
+                        previousMap: this.currentlyPlaying[`${user.twitch}`]
+                    }
+                }
             });
 
             this.discordClient.login(this.token);
