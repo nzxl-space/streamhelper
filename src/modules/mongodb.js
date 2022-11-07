@@ -5,9 +5,10 @@ module.exports = class MongoDB {
         this.string = string;
         this.options = options;
 
-        this.connect()
-        .then(() => console.log("MongoDB connected!"))
-        .catch(() => console.log("MongoDB failed!"));
+        // export vars
+        this.users = null;
+        this.mapData = null;
+        this.activeUsers = null;
     }
 
     connect() {
@@ -15,11 +16,11 @@ module.exports = class MongoDB {
             let mongoClient = new MongoClient(this.string, this.options);
             mongoClient.connect(async (err) => {
                 if(err) return reject();
-                let db = mongoClient.db("osu");
+                const db = mongoClient.db("osu");
 
-                const users = exports.users = db.collection("users");
-                exports.mapData = db.collection("map_data");
-                exports.activeUsers = await users.distinct("userId");
+                this.users = db.collection("users");
+                this.mapData = db.collection("map_data");
+                this.activeUsers = await this.users.distinct("userId");
 
                 resolve();
             });

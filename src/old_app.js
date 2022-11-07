@@ -86,24 +86,24 @@ let activeUsers, users, mapData;
         activeUsers = await users.distinct("userId");
 
         console.log("MongoDB connected!");
-    });
+    }); // DONE
 
     banchoClient.connect();
     banchoClient.on("connected", () => {
         console.log(`Bancho connected as ${process.env.OSU_USERNAME}!`);
-    });
+    }); // DONE
 
     discordClient.login(process.env.DISCORD_TOKEN);
     discordClient.on("ready", () => {
         console.log(`Discord connected as ${discordClient.user.tag}!`);
-        discordClient.user.setPresence({ activities: [{ name: "osu!", type: "PLAYING" }], status: "dnd" });
+        discordClient.user.setPresence({ activities: [{ name: "osu!", type: "PLAYING" }], status: "dnd" }); // DONE
 
         if(discordClient.listeners("guildMemberRemove").length <= 0) {
             discordClient.on("guildMemberRemove", async (member) => {
                 await deleteUser(member.id);
-            });
+            }); // DONE
 
-            discordClient.on("presenceUpdate", (_old, _new) => {
+            discordClient.on("presenceUpdate", (_old, _new) => { 
                 if(!activeUsers.includes(_new.userId) || _new.guild.id !== process.env.DISCORD_GUILD) return;
 
                 users.findOne({ userId: _new.userId }).then(async (user) => {
@@ -380,8 +380,8 @@ let activeUsers, users, mapData;
         if(`${data.renderID}` in awaitingVideo) {
             awaitingVideo[`${data.renderID}`].done = Date.now();
             awaitingVideo[`${data.renderID}`].url = data.videoUrl;
-        }
-    });
+        } 
+    });// DONE 
 })();
 
 /**
@@ -424,8 +424,8 @@ function liveStatus(channel) {
                 resolve(false);
             }
         });
-    });
-}
+    }); 
+}// DONE
 
 /**
  * Lookup a beatmap on osu! api
@@ -488,7 +488,7 @@ function lookupBeatmap(beatmapName) {
             }
         })
     });
-}
+} // DONE
 
 /**
  * Join or leave twitch channel
@@ -511,7 +511,7 @@ function toggleChannel(twitch, state) {
 
         resolve();
     });
-}
+} 
 
 /**
  * Render a replay
@@ -563,7 +563,7 @@ function renderReplay(replay, username) {
             resolve(awaitingVideo[`${result.renderID}`].url);
         });
     });
-}
+} // DONE
 
 /**
  * Delete user from db
@@ -583,7 +583,7 @@ function deleteUser(id) {
             resolve();
         });
     });
-}
+} // DONE
 
 /**
  * send dm to user
@@ -595,7 +595,7 @@ function sendDM(user, message) {
     return new Promise((resolve) => {
         discordClient.guilds.cache.get(process.env.DISCORD_GUILD).members.cache.get(user).send(message).then(() => resolve());
     });
-}
+} // DONE
 
 
 /**
@@ -639,4 +639,4 @@ function setRole(user, role) {
             .then(() => resolve());
         });
     });
-}
+} // DONE

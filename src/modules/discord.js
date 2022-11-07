@@ -1,21 +1,21 @@
-const { users, mapData, activeUsers } = require("./mongodb.js");
 const { Client, Intents, MessageEmbed } = require("discord.js");
+
+const { mongoDB, twitch } = require("../app");
 
 module.exports = class Discord {
     constructor(token, guild, downloadURL) {
         this.token = token;
         this.guild = guild;
         this.downloadURL = downloadURL;
-        this.discordClient = null;
 
-        this.createInstance()
-        .then(() => console.log("Discord connected!"))
-        .catch(() => console.log("Discord failed!"));
+        // export vars
+        this.discordClient = null;
+        this.currentlyPlaying = {};
     }
 
-    createInstance() {
+    connect() {
         return new Promise((resolve, reject) => {
-            this.discordClient = exports.discordClient = new Client(
+            this.discordClient = new Client(
                 {
                     partials: ["CHANNEL"],
                     intents: [ 
@@ -35,9 +35,7 @@ module.exports = class Discord {
                 resolve();
             });
 
-            this.discordClient.on("guildMemberRemove", (member) => {
-                
-            });
+            this.discordClient.on("guildMemberRemove", async (member) => await this.deleteUser(member.id));
 
             this.discordClient.on("presenceUpdate", (_old, _new) => {
 
@@ -47,15 +45,22 @@ module.exports = class Discord {
         });
     }
 
+    /**
+     * Delete a user from the database
+     * @param {String|Number} user Discord User ID
+     * @returns {Promise}
+     */
     deleteUser(user) {
         return new Promise((resolve) => {
-            users.findOne({ userId: user }).then(async (result) => {
-                await toggleChannel(user.twitch, false);
-                await users.deleteOne({ userId: result.userId });
+            mongoDB.users.findOne({ userId: user }).then(async (result) => {
+                twitch.twitchClient.part(`#${user.twitch}`);
+                await mongoDB.users.deleteOne({ userId: result.userId });
     
-                if(activeUsers.indexOf(result.userId) > -1)
-                    activeUsers.splice(activeUsers.indexOf(result.userId), 1);
+                if(mongoDB.activeUsers.indexOf(result.userId) > -1)
+                    mongoDB.activeUsers.splice(mongoDB.activeUsers.indexOf(result.userId), 1);
     
+                console.log(`Deleted user ${user.twitch} from database!`);
+
                 resolve();
             });
         });
@@ -97,6 +102,8 @@ module.exports = class Discord {
      */
     sendMessage(message, user) {
         return new Promise((resolve) => {
+            if(!message) return;
+            
             let guild = this.discordClient.guilds.cache.get(this.guild);
             if(!guild) return;
 
@@ -123,6 +130,7 @@ module.exports = class Discord {
      * @param {String} data.url URL Link for Description
      * @param {String} data.action Event e.g. "A new map has been added!"
      * @param {Array}  data.fields Object Array
+     * @param {String} data.footer Id of the action
      * @param {String} data.image Image
      * @returns {Object}
      */
@@ -133,14 +141,15 @@ module.exports = class Discord {
                     color: type == 0 ? "#FD7CB6" : type == 1 ? "#bb72f7" : "#908aa3",
                     author: {
                         name: data.action,
-                        icon_url: type == 0 ? "https://i.imgur.com/NJt4fjH.png" : type == 1 ? "https://i.imgur.com/x0kqtjY.png" : "https://i.imgur.com/9uEfUy5.png",
+                        icon_url: type == 0 ? "https://i.imgur.com/BGUNz25.png" : type == 1 ? "https://i.imgur.com/x0kqtjY.png" : "https://i.imgur.com/9uEfUy5.png",
                     },
                     title: data.title,
                     description: data.description,
                     url: data.url,
                     fields: data.fields,
-                    image: data.image
+                    footer: data.footer
                 })
+                .setImage(data.image)
                 .setTimestamp()
             ]
         }
