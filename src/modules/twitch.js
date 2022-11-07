@@ -4,7 +4,7 @@ const clone = require("clone");
 const { BeatmapCalculator } = require("@kionell/osu-pp-calculator");
 const pp = new BeatmapCalculator();
 
-const { mongoDB } = require("../app");
+const { mongoDB, discord } = require("../app");
 var bancho = require("../app").bancho;
 
 const Regex = {
@@ -53,7 +53,7 @@ module.exports = class Twitch {
                 let accuracy = message.match(Regex.Accuracy);
 
                 if(beatmapId || setId) {
-                    let map = await bancho.getBeatmap(setId && setId.length >= 1 ? setId[0] : beatmapId[0]);
+                    let map = await bancho.getBeatmap(beatmapId && beatmapId.length >= 1 ? beatmapId[0] : setId[0]);
                     if(!map) return;
 
                     let user = await mongoDB.users.findOne({ twitch: channel.slice(1) });
@@ -75,15 +75,15 @@ module.exports = class Twitch {
 
                 let prefix = user["prefix"] ? user["prefix"] : "!";
                 let silencedCommands = ["np", "nppp", "last", "lastpp", "help"];
-                let modCommands = ["silence", "blacklist", "prefix"];
+                let adminCommands = ["silence", "blacklist", "prefix"];
 
                 if(!message.startsWith(prefix)) return;
                 let [command, ...args] = message.slice(prefix.length).trim().split(" ");
 
-                if(silencedCommands.includes(command.toLowerCase())) return;
-                if(modCommands.includes(command.toLowerCase())) {
-                    if(!tags["mod"] || tags["username"] !== channel.slice(1)) return;
-                }
+                if(user["silenced"] && silencedCommands.includes(command.toLowerCase())) return;
+
+                if(adminCommands.includes(command.toLowerCase()))
+                    if(!Object.keys(tags["badges"]).includes("broadcaster")) return;
 
                 switch (command.toLowerCase()) {
                     case "silence": {
@@ -127,7 +127,7 @@ module.exports = class Twitch {
 
                     case "last":
                     case "np":  {
-                        let map = command.toLowerCase() == "np" ? bancho.currentlyPlaying[`${channel}`] : bancho.currentlyPlaying[`${channel}`].previousMap;
+                        let map = command.toLowerCase() == "np" ? discord.currentlyPlaying[`${channel.slice(1)}`] : discord.currentlyPlaying[`${channel.slice(1)}`].previousMap;
                         if(!map) 
                             return this.twitchClient.reply(channel, `» No data available, try again later 😭`, tags["id"]);
 
@@ -138,7 +138,7 @@ module.exports = class Twitch {
 
                     case "lastpp":
                     case "nppp":  {
-                        let map = command.toLowerCase() == "nppp" ? clone(bancho.currentlyPlaying[`${channel}`]) : clone(bancho.currentlyPlaying[`${channel}`].previousMap);
+                        let map = command.toLowerCase() == "nppp" ? clone(discord.currentlyPlaying[`${channel.slice(1)}`]) : clone(discord.currentlyPlaying[`${channel.slice(1)}`].previousMap);
                         if(!map) 
                             return this.twitchClient.reply(channel, `» No data available, try again later 😭`, tags["id"]);
 

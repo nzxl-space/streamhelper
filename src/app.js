@@ -35,10 +35,17 @@ require("log-prefix")(() => { return `[nzxl.space | ${require("moment")(Date.now
 
     await twitch.connect().then(console.log(`Twitch connected as ${process.env.TWITCH_USERNAME}!`));
     module.exports.twitch = twitch;
+
+    // -------------------------------
+
+    const Express = require("./modules/express.js");
+    let express = new Express(process.env.PORT || 2048, process.env.DISCORD_PUBLIC, process.env.DISCORD_SECRET, process.env.DISCORD_REDIRECT_URI, process.env.DISCORD_TOKEN, process.env.DISCORD_GUILD);
+
+    await express.createServer().then(console.log(`Listening on port ${process.env.PORT || 2048}!`));
+    module.exports.express = express;
 })();
 
 
 
 
 
-// const express = require("./modules/express.js");

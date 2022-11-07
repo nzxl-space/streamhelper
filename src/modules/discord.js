@@ -1,7 +1,8 @@
 const { Client, Intents, MessageEmbed } = require("discord.js");
 
-const { mongoDB, twitch } = require("../app");
+const { mongoDB } = require("../app");
 var bancho = require("../app").bancho;
+var twitch = require("../app").twitch;
 
 const presencePattern = /^(.*?)\(rank\s#(?:\d+)(?:,\d{1,3}|,\d{1,3},\d{1,3})?\)/;
 
@@ -51,7 +52,7 @@ module.exports = class Discord {
                 if(user.osu == null) {
                     if(user["activityRetryCount"] && user["activityRetryCount"] >= 20) {
                         await this.deleteUser(user.userId);
-                        await this.updateRole(user.userId, "on hold");                        
+                        await this.updateRole(user.userId, "on hold");
                         await this.sendMessage(
                             this.buildEmbed(2, {
                                 title: `Beatmap Requests Disabled`,
@@ -81,24 +82,42 @@ module.exports = class Discord {
                     }
                 }
 
-                if(activity.length <= 0) return;
+                if(bancho == undefined) {
+                    bancho = require("../app").bancho;
+                }
+
+                if(twitch == undefined) {
+                    twitch = require("../app").twitch;
+                }
+
+                if(twitch.twitchClient.getChannels().includes(`#${user.twitch}`)) {
+                    if(await twitch.isLive(user.twitch) == false) {
+                        twitch.twitchClient.part(`#${user.twitch}`);
+                    }
+                } else {
+                    if(await twitch.isLive(user.twitch) == true) {
+                        twitch.twitchClient.join(`#${user.twitch}`);
+                    }
+                }
+
+                await bancho.getScores(user.osu);
+
+                if(activity.length <= 0) return; // If no game activity found, just return and disable currentlyPlaying
 
                 let mapName = activity[0].details;
                 if(!mapName) return;
 
                 if(!this.currentlyPlaying[`${user.twitch}`] || this.currentlyPlaying[`${user.twitch}`] && this.currentlyPlaying[`${user.twitch}`].name != mapName) {
-                    if(bancho == undefined) {
-                        bancho = require("../app").bancho;
-                    }
+
                     let map = await bancho.getBeatmap(mapName);
 
                     this.currentlyPlaying[`${user.twitch}`] = {
                         name: mapName,
                         mapData: map.mapData,
                         ppData: {
-                            A: map.ppData.A,
-                            S: map.ppData.S,
-                            X: map.ppData.X
+                            A: map.ppData["A"],
+                            S: map.ppData["S"],
+                            X: map.ppData["X"]
                         },
                         previousMap: this.currentlyPlaying[`${user.twitch}`]
                     }
@@ -117,13 +136,19 @@ module.exports = class Discord {
     deleteUser(user) {
         return new Promise((resolve) => {
             mongoDB.users.findOne({ userId: user }).then(async (result) => {
-                twitch.twitchClient.part(`#${user.twitch}`);
+                if(twitch == undefined) {
+                    twitch = require("../app").twitch;
+                }
+
+                if(twitch.twitchClient.getChannels().includes(`#${result.twitch}`))
+                    twitch.twitchClient.part(`#${result.twitch}`);
+
                 await mongoDB.users.deleteOne({ userId: result.userId });
     
                 if(mongoDB.activeUsers.indexOf(result.userId) > -1)
                     mongoDB.activeUsers.splice(mongoDB.activeUsers.indexOf(result.userId), 1);
     
-                console.log(`Deleted user ${user.twitch} from database!`);
+                console.log(`${result.discordName} has been removed from the service!`);
 
                 resolve();
             });

@@ -90,13 +90,13 @@ module.exports = class Bancho {
                 if(!artist || !version) return;
 
                 let searchResults = result.beatmapsets.filter(b => b.artist == artist[1]);
-                if(!searchResults) return;
+                if(!searchResults || searchResults.length <= 0) return;
 
                 let beatmapSet = searchResults.filter(b => b.beatmaps.filter(x => x.version == version[0]).length >= 1);
-                if(!beatmapSet) return;
+                if(!beatmapSet || beatmapSet.length <= 0) return;
 
                 let beatmap = beatmapSet[0].beatmaps.filter(b => b.version == version[0]);
-                if(!beatmap) return;
+                if(!beatmap || beatmap.length <= 0) return;
 
                 let apiv1 = await this.banchoClient.osuApi.beatmaps.getByBeatmapId(beatmap[0].id);
                 if(apiv1) beatmap[0].genre = apiv1[0].genre;
@@ -128,7 +128,7 @@ module.exports = class Bancho {
 
             map.score = await pp.calculate({ beatmapId: map.mapData.id });
 
-            await mongoDB.mapData.insertOne({
+            let insertMap = {
                 name: map.name,
                 setId: map.mapData.beatmapset_id,
                 mapData: map.mapData,
@@ -137,7 +137,9 @@ module.exports = class Bancho {
                     S: Math.round(map.score.performance[1].totalPerformance),
                     X: Math.round(map.score.performance[2].totalPerformance)
                 }
-            });
+            };
+
+            await mongoDB.mapData.insertOne(insertMap);
 
             await discord.sendMessage(
                 discord.buildEmbed(0, {
@@ -167,7 +169,7 @@ module.exports = class Bancho {
                 })
             );
 
-            resolve(map);
+            resolve(insertMap);
         });
     }
 
@@ -317,9 +319,9 @@ module.exports = class Bancho {
                             image: `https://assets.ppy.sh/beatmaps/${map.mapData.id}/covers/cover.jpg`
                         })
                     );
-
-                    resolve();
                 });
+
+                resolve();
             }
         });
     }
