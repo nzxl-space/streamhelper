@@ -1,6 +1,7 @@
 const tmi = require("tmi.js");
 const moment = require("moment");
 const clone = require("clone");
+const fetch = require("node-fetch-retry");
 const { BeatmapCalculator } = require("@kionell/osu-pp-calculator");
 const pp = new BeatmapCalculator();
 
