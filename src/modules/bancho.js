@@ -321,8 +321,10 @@ module.exports = class Bancho {
                     );
                 });
 
-                resolve();
+                return resolve();
             }
+
+            resolve();
         });
     }
 
