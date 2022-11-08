@@ -94,7 +94,8 @@ module.exports = class Discord {
                     if(await twitch.isLive(user.twitch) == false) {
                         twitch.twitchClient.part(`#${user.twitch}`);
                     }
-                } else {
+                }
+                if(!twitch.twitchClient.getChannels().includes(`#${user.twitch}`)) {
                     if(await twitch.isLive(user.twitch) == true) {
                         twitch.twitchClient.join(`#${user.twitch}`);
                     }
