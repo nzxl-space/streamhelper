@@ -5,9 +5,6 @@ const fetch = require("node-fetch-retry");
 const { BeatmapCalculator } = require("@kionell/osu-pp-calculator");
 const pp = new BeatmapCalculator();
 
-const { mongoDB, discord } = require("../app");
-var bancho = require("../app").bancho;
-
 const Regex = {
     setId: /(?<=beatmapsets\/|\/s\/)\d+/,
     beatmapId: /(?<=beatmaps\/|b\/|#osu\/|#taiko\/|#fruits\/|#mania\/)\d+/,
@@ -46,6 +43,7 @@ module.exports = class Twitch {
             this.twitchClient.on("part", (channel, username, self) => self ? console.log(`Disabled Beatmap Requests for ${channel}!`) : 0);
 
             this.twitchClient.on("message", async (channel, tags, message, self) => {
+                const { mongoDB, bancho, discord } = require("../app");
                 if(self || block.includes(tags["username"])) return;
 
                 let beatmapId = message.match(Regex.beatmapId);

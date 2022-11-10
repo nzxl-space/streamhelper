@@ -6,9 +6,6 @@ const FormData = require("form-data");
 const { BeatmapCalculator } = require("@kionell/osu-pp-calculator");
 const pp = new BeatmapCalculator();
 
-const { mongoDB, discord } = require("../app");
-var twitch = require("../app").twitch;
-
 module.exports = class Bancho {
     constructor(ircUsername, ircPassword, apiKey, clientId, clientSecret, ordrKey, downloadURL) {
         this.ircUsername = ircUsername;
@@ -116,6 +113,8 @@ module.exports = class Bancho {
      */
     addBeatmap(beatmapName, mode = 0) {
         return new Promise(async (resolve) => {
+            const { mongoDB, discord } = require("../app");
+
             if(!beatmapName) return;
 
             let map = {};
@@ -181,6 +180,8 @@ module.exports = class Bancho {
      */
     getBeatmap(id) {
         return new Promise(async (resolve) => {
+            const { mongoDB } = require("../app");
+
             let map = await mongoDB.mapData.findOne({ 
                 $or: [{ mapData: { $elemMatch: { id: id } }}, { mapData: { $elemMatch: { beatmapset_id: id } }}, { name: id }]
             });
@@ -268,6 +269,8 @@ module.exports = class Bancho {
      */
     getScores(username) {
         return new Promise(async (resolve) => {
+            const { mongoDB, discord, twitch } = require("../app");
+
             let scores = await this.banchoClient.osuApi.user.getBest(username, undefined, 15);
             scores = scores.filter(s => s.replayAvailable == true && moment(Date.now()).diff(s.date, "minutes") <= 10);
 
@@ -284,10 +287,6 @@ module.exports = class Bancho {
                     let url = await this.render(replay.body);
 
                     await mongoDB.users.updateOne({ userId: user.userId }, { $set: { [`replays.${score.beatmapId}`]: `${url}` }});
-
-                    if(twitch == undefined) {
-                        twitch = require("../app").twitch;
-                    }
 
                     if(!user["silenced"]) {
                         if(twitch.twitchClient.getChannels().includes(`#${user.twitch}`))

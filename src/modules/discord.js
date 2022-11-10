@@ -1,9 +1,4 @@
 const { Client, Intents, MessageEmbed } = require("discord.js");
-
-const { mongoDB } = require("../app");
-var bancho = require("../app").bancho;
-var twitch = require("../app").twitch;
-
 const presencePattern = /^(.*?)\(rank\s#(?:\d+)(?:,\d{1,3}|,\d{1,3},\d{1,3})?\)/;
 
 module.exports = class Discord {
@@ -42,6 +37,7 @@ module.exports = class Discord {
             this.discordClient.on("guildMemberRemove", async (member) => await this.deleteUser(member.id));
 
             this.discordClient.on("presenceUpdate", async (_, presence) => {
+                const { mongoDB, twitch, bancho } = require("../app");
                 if(!mongoDB.activeUsers.includes(presence.userId) || presence.guild.id !== this.guild) return;
 
                 let user = await mongoDB.users.findOne({ userId: presence.userId });
@@ -80,14 +76,6 @@ module.exports = class Discord {
                         await mongoDB.users.updateOne({ userId: user.userId }, { $set: { osu: matched[1].trim() }});
                         await this.updateRole(user.userId, "regular");
                     }
-                }
-
-                if(bancho == undefined) {
-                    bancho = require("../app").bancho;
-                }
-
-                if(twitch == undefined) {
-                    twitch = require("../app").twitch;
                 }
 
                 if(twitch.twitchClient.getChannels().includes(`#${user.twitch}`)) {
@@ -136,11 +124,8 @@ module.exports = class Discord {
      */
     deleteUser(user) {
         return new Promise((resolve) => {
+            const { mongoDB, twitch } = require("../app");
             mongoDB.users.findOne({ userId: user }).then(async (result) => {
-                if(twitch == undefined) {
-                    twitch = require("../app").twitch;
-                }
-
                 if(twitch.twitchClient.getChannels().includes(`#${result.twitch}`))
                     twitch.twitchClient.part(`#${result.twitch}`);
 

@@ -13,8 +13,6 @@ app.use(express.static(path.join(__dirname, "..", "static")));
 
 const httpServer = createServer(app);
 
-const { mongoDB, discord } = require("../app");
-
 module.exports = class Express {
     constructor(port, clientId, clientSecret, redirectURI, token, guild) {
         this.port = port;
@@ -32,6 +30,7 @@ module.exports = class Express {
             app.get("/", (req, res) => res.render("index", { discordURL: this.authorizeURL }));
 
             app.get("/discord", async (req, res) => {
+                const { mongoDB, discord } = require("../app");
                 if(!req.query.code) return res.send(`<script>window.close()</script>`);
     
                 let token = await oauth.tokenRequest(
