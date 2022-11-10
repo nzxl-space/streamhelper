@@ -6,7 +6,8 @@ const FormData = require("form-data");
 const { BeatmapCalculator } = require("@kionell/osu-pp-calculator");
 const pp = new BeatmapCalculator();
 
-const { mongoDB, discord, twitch } = require("../app");
+const { mongoDB, discord } = require("../app");
+var twitch = require("../app").twitch;
 
 module.exports = class Bancho {
     constructor(ircUsername, ircPassword, apiKey, clientId, clientSecret, ordrKey, downloadURL) {
@@ -283,6 +284,10 @@ module.exports = class Bancho {
                     let url = await this.render(replay.body);
 
                     await mongoDB.users.updateOne({ userId: user.userId }, { $set: { [`replays.${score.beatmapId}`]: `${url}` }});
+
+                    if(twitch == undefined) {
+                        twitch = require("../app").twitch;
+                    }
 
                     if(!user["silenced"]) {
                         if(twitch.twitchClient.getChannels().includes(`#${user.twitch}`))
