@@ -144,8 +144,12 @@ module.exports = class Discord {
         return new Promise((resolve) => {
             const { mongoDB, twitch } = require("../app");
             mongoDB.users.findOne({ userId: user }).then(async (result) => {
-                if(twitch.twitchClient.getChannels().includes(`#${result.twitch}`))
-                    twitch.twitchClient.part(`#${result.twitch}`);
+                if(!result || result.length <= 0) return;
+                
+                if(result["twitch"]) {
+                    if(twitch.twitchClient.getChannels().includes(`#${result.twitch}`))
+                        twitch.twitchClient.part(`#${result.twitch}`);
+                }
 
                 await mongoDB.users.deleteOne({ userId: result.userId });
     
