@@ -163,7 +163,7 @@ module.exports = class Bancho {
                             inline: true
                         }
                     ],
-                    action: `𝒂 𝒏𝒆𝒘 𝒎𝒂𝒑 𝒉𝒂𝒔 𝒃𝒆𝒆𝒏 𝒂𝒅𝒅𝒆𝒅 𝒕𝒐 𝒕𝒉𝒆 𝒅𝒂𝒕𝒂𝒃𝒂𝒔𝒆`,
+                    action: `𝗡𝗘𝗪 𝗠𝗔𝗣 𝗔𝗗𝗗𝗘𝗗`,
                     footer: "new_map_added",
                     image: `https://assets.ppy.sh/beatmaps/${map.mapData.beatmapset_id}/covers/cover.jpg`
                 })
@@ -297,7 +297,7 @@ module.exports = class Bancho {
                     let map = await this.getBeatmap(score.beatmapId);
 
                     await discord.sendMessage(
-                        discord.buildEmbed(0, {
+                        discord.buildEmbed(3, {
                             title: `${map.name}`,
                             description: `mapped by ${map.mapData.creator} | ${moment(map.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(map.mapData.difficulty_rating * 100) / 100} - AR${map.mapData.ar}`,
                             url: `https://osu.ppy.sh/scores/osu/${score.scoreId}`,
@@ -318,9 +318,9 @@ module.exports = class Bancho {
                                     inline: true
                                 }
                             ],
-                            action: `${user.osu} 𝒔𝒖𝒃𝒎𝒊𝒕𝒕𝒆𝒅 𝒂 𝒏𝒆𝒘 𝒕𝒐𝒑 𝒔𝒄𝒐𝒓𝒆`,
+                            action: `𝗡𝗘𝗪 𝗦𝗖𝗢𝗥𝗘 𝗥𝗘𝗖𝗢𝗥𝗗𝗘𝗗 » ${user.osu}`,
                             footer: "new_top_score",
-                            image: `https://assets.ppy.sh/beatmaps/${map.mapData.id}/covers/cover.jpg`
+                            image: `https://assets.ppy.sh/beatmaps/${map.mapData.beatmapset_id}/covers/cover.jpg`
                         })
                     );
                 });

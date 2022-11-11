@@ -1,3 +1,4 @@
+const moment = require("moment");
 const { Client, Intents, MessageEmbed } = require("discord.js");
 const presencePattern = /^(.*?)\(rank\s#(?:\d+)(?:,\d{1,3}|,\d{1,3},\d{1,3})?\)/;
 
@@ -10,6 +11,7 @@ module.exports = class Discord {
         // export vars
         this.discordClient = null;
         this.currentlyPlaying = {};
+        this.lastChecked = {};
     }
 
     connect() {
@@ -54,7 +56,7 @@ module.exports = class Discord {
                                 title: `Beatmap Requests Disabled`,
                                 description: "We're having trouble finding your osu! username through your game activity.\nPlease make sure your game activities are working and re-authorize your account.\nMore informations at <#1024630491145588768>! 😎",
                                 url: `https://osu.nzxl.space/`,
-                                action: `𝒏𝒐𝒕𝒊𝒄𝒆`,
+                                action: `𝗡𝗢𝗧𝗜𝗖𝗘`,
                                 footer: "presence_not_found"
                             }),
                         user.userId);
@@ -78,14 +80,30 @@ module.exports = class Discord {
                     }
                 }
 
-                if(twitch.twitchClient.getChannels().includes(`#${user.twitch}`)) {
-                    if(await twitch.isLive(user.twitch) == false) {
-                        twitch.twitchClient.part(`#${user.twitch}`);
-                    }
-                }
-                if(!twitch.twitchClient.getChannels().includes(`#${user.twitch}`)) {
-                    if(await twitch.isLive(user.twitch) == true) {
+                let isJoined = twitch.twitchClient.getChannels().includes(`#${user.twitch}`);
+                let diff = moment(Date.now()).diff(this.lastChecked[`${user.twitch}`], "minutes");
+
+                if(!this.lastChecked[`${user.twitch}`] || Number(diff) && diff >= 3) {
+                    this.lastChecked[`${user.twitch}`] = Date.now();
+
+                    let live = await twitch.isLive(user.twitch);
+
+                    if(!isJoined && live) {
                         twitch.twitchClient.join(`#${user.twitch}`);
+
+                        await this.sendMessage(
+                            this.buildEmbed(1, {
+                                title: `${user.twitch} just went live!`,
+                                description: `playing osu! | ${user.osu}`,
+                                url: `https://twitch.tv/${user.twitch}`,
+                                fields: [],
+                                action: `𝗕𝗢𝗧 𝗝𝗢𝗜𝗡𝗘𝗗 𝗖𝗛𝗔𝗡𝗡𝗘𝗟 » ${user.twitch}`,
+                                footer: "beatmap_requests_enabled",
+                                image: `https://static-cdn.jtvnw.net/previews-ttv/live_user_${user.twitch}-440x248.jpg`
+                            })
+                        );
+                    } else if(isJoined && !live) {
+                        twitch.twitchClient.part(`#${user.twitch}`);
                     }
                 }
 
@@ -198,7 +216,7 @@ module.exports = class Discord {
 
     /**
      * Construct a message embed to send to a channel or user
-     * @param {Number} type 0 = osu! | 1 = Twitch | 2 = nzxl.space
+     * @param {Number} type 0 = osu! | 1 = Twitch | 2 = nzxl.space | 3 = PogChamp
      * @param {Object} data Object containing the embed info
      * @param {String} data.title Title
      * @param {String} data.description Description
@@ -213,10 +231,10 @@ module.exports = class Discord {
         let embed = { 
             embeds: [
                 new MessageEmbed({
-                    color: type == 0 ? "#FD7CB6" : type == 1 ? "#bb72f7" : "#908aa3",
+                    color: type == 0 ? "#FD7CB6" : type == 1 ? "#bb72f7" : type == 2 ? "#908aa3" : type == 3 ? "#ff0062" : "#908aa3",
                     author: {
                         name: data.action,
-                        icon_url: type == 0 ? "https://i.imgur.com/BGUNz25.png" : type == 1 ? "https://i.imgur.com/x0kqtjY.png" : "https://i.imgur.com/9uEfUy5.png",
+                        icon_url: type == 0 ? "https://i.imgur.com/BGUNz25.png" : type == 1 ? "https://i.imgur.com/x0kqtjY.png" : type == 2 ? "https://i.imgur.com/9uEfUy5.png" : type == 3 ? "https://i.imgur.com/laAoimL.png" : "https://i.imgur.com/9uEfUy5.png",
                     },
                     title: data.title,
                     description: data.description,

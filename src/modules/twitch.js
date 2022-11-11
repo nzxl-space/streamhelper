@@ -210,7 +210,14 @@ module.exports = class Twitch {
                 pause: 5000
             }).then(async (result) => {
                 result = await result.json();
-                resolve((result.data && result.data.length >= 1 ? true : false));
+
+                if(result.data && result.data.length >= 1) {
+                    if(result.data[0].game_name == "osu!") {
+                        return resolve(true);
+                    }
+                }
+
+                resolve(false);
             }).catch(() => resolve(false));
         });
     }
