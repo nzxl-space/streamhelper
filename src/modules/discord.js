@@ -93,8 +93,8 @@ module.exports = class Discord {
 
                         await this.sendMessage(
                             this.buildEmbed(1, {
-                                title: `${user.twitch} just went live!`,
-                                description: `playing osu! | ${user.osu}`,
+                                title: `Listening for requests on ${user.twitch}!`,
+                                description: `${user.osu}`,
                                 url: `https://twitch.tv/${user.twitch}`,
                                 fields: [],
                                 action: `𝗕𝗢𝗧 𝗝𝗢𝗜𝗡𝗘𝗗 𝗖𝗛𝗔𝗡𝗡𝗘𝗟 » ${user.twitch}`,

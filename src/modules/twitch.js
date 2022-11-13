@@ -46,6 +46,9 @@ module.exports = class Twitch {
                 const { mongoDB, bancho, discord } = require("../app");
                 if(self || block.includes(tags["username"])) return;
 
+                block.push(tags["username"]);
+                setTimeout(() => block = block.filter(u => u !== tags["username"]), 5*1000);
+
                 let beatmapId = message.match(Regex.beatmapId);
                 let setId = message.match(Regex.setId);
                 let beatmapMods = message.match(Regex.beatmapMods);
@@ -58,13 +61,25 @@ module.exports = class Twitch {
                     let user = await mongoDB.users.findOne({ twitch: channel.slice(1) });
                     if(!user || user.length <= 0) return;
 
+                    if(user["silencedReq"]) return;
+
                     if(user["osu"]) {
                         if(user["blacklist"] && user["blacklist"].includes(tags["username"])) return;
-                        bancho.banchoClient.getUser(user.osu).sendMessage(`${tags["username"]} » [https://osu.ppy.sh/b/${map.mapData.id} ${map.name}] ${beatmapMods ? `+${beatmapMods.toString().toUpperCase()}` : ""} | ${moment(map.mapData.total_length*1000).format("mm:ss")} - ★ ${Math.round(map.mapData.difficulty_rating * 100) / 100} - AR${map.mapData.ar}`);
-                    }
 
-                    block.push(tags["username"]);
-                    setTimeout(() => block = block.filter(u => u !== tags["username"]), 3*1000);
+                        let data = {
+                            mapName: `[https://osu.ppy.sh/b/${map.mapData.id} ${map.name}]`,
+                            mods: `${beatmapMods ? `+${beatmapMods.toString().toUpperCase()}` : ""}`,
+                            stats: `★ ${Math.round(map.mapData.difficulty_rating * 100) / 100}, AR ${map.mapData.ar}, BPM ${map.mapData.bpm} - ${moment(map.mapData.total_length*1000).format("mm:ss")}`,
+                            status: `${map.mapData.status[0].toUpperCase()}${map.mapData.status.slice(1)}`
+                        }
+
+                        let request = `${tags["username"]} × [${data["status"]}] ${data["mapName"]} ${data["mods"]} | (${data["stats"]})`;
+
+                        bancho.banchoClient.getUser(user.osu).sendMessage(request.trim());
+
+                        if(!user["silenced"]) 
+                            this.twitchClient.reply(channel, `» ${map.name} - Request sent!`, tags["id"]);
+                    }
 
                     return;
                 }
@@ -74,7 +89,7 @@ module.exports = class Twitch {
 
                 let prefix = user["prefix"] ? user["prefix"] : "!";
                 let silencedCommands = ["np", "nppp", "last", "lastpp", "help"];
-                let adminCommands = ["silence", "blacklist", "prefix"];
+                let adminCommands = ["silence", "request", "blacklist", "prefix"];
 
                 if(!message.startsWith(prefix)) return;
                 let [command, ...args] = message.slice(prefix.length).trim().split(" ");
@@ -87,7 +102,14 @@ module.exports = class Twitch {
                 switch (command.toLowerCase()) {
                     case "silence": {
                         await mongoDB.users.updateOne({ userId: user.userId }, [ { $set: { silenced: { $eq: [false, "$silenced"] } } } ]);
-                        this.twitchClient.reply(channel, `» ${ !user["silenced"] ? "Silenced" : "Enabled"} all bot messages for this channel`, tags["id"]);
+                        this.twitchClient.reply(channel, `» ${!user["silenced"] ? "Silenced" : "Enabled"} all bot messages for this channel`, tags["id"]);
+
+                        break;
+                    }
+
+                    case "request": {
+                        await mongoDB.users.updateOne({ userId: user.userId }, [ { $set: { silencedReq: { $eq: [false, "$silencedReq"] } } } ]);
+                        this.twitchClient.reply(channel, `» ${!user["silencedReq"] ? "Silenced" : "Enabled"} beatmap requests`, tags["id"]);
 
                         break;
                     }
@@ -169,9 +191,6 @@ module.exports = class Twitch {
                         break;
                     }
                 }
-
-                block.push(tags["username"]);
-                setTimeout(() => block = block.filter(u => u !== tags["username"]), 3*1000);
             });
 
             this.twitchClient.connect().catch(() => reject());
