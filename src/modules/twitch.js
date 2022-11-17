@@ -44,10 +44,7 @@ module.exports = class Twitch {
 
             this.twitchClient.on("message", async (channel, tags, message, self) => {
                 const { mongoDB, bancho, discord } = require("../app");
-                if(self || block.includes(tags["username"])) return;
-
-                block.push(tags["username"]);
-                setTimeout(() => block = block.filter(u => u !== tags["username"]), 5*1000);
+                if(self) return;
 
                 let beatmapId = message.match(Regex.beatmapId);
                 let setId = message.match(Regex.setId);
@@ -55,6 +52,8 @@ module.exports = class Twitch {
                 let accuracy = message.match(Regex.Accuracy);
 
                 if(beatmapId || setId) {
+                    if(block.includes(tags["username"])) return;
+
                     let map = await bancho.getBeatmap(beatmapId && beatmapId.length >= 1 ? beatmapId[0] : setId[0]);
                     if(!map) return;
 
@@ -79,6 +78,9 @@ module.exports = class Twitch {
 
                         if(!user["silenced"]) 
                             this.twitchClient.reply(channel, `» ${map.name} - Request sent!`, tags["id"]);
+
+                        block.push(tags["username"]);
+                        setTimeout(() => block = block.filter(u => u !== tags["username"]), 3*1000);
                     }
 
                     return;
