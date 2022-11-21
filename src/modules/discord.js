@@ -33,6 +33,17 @@ module.exports = class Discord {
             this.discordClient.on("error", () => reject());
             this.discordClient.on("ready", () => {
                 this.discordClient.user.setPresence({ activities: [{ name: "osu!", type: "PLAYING" }], status: "dnd" });
+
+                this.discordClient.guilds.cache.get(this.guild).commands.create({
+                    name: "ping",
+                    description: "Pong!"
+                });
+
+                this.discordClient.guilds.cache.get(this.guild).commands.create({
+                    name: "stats",
+                    description: "Map database stats for kiyomii bot"
+                });
+
                 resolve();
             });
 
@@ -91,6 +102,8 @@ module.exports = class Discord {
                     if(!isJoined && live) {
                         twitch.twitchClient.join(`#${user.twitch}`);
 
+                        delete this.currentlyPlaying[`${user.twitch}`]; // delete if it exists lol it may contain outdated data
+
                         await this.sendMessage(
                             this.buildEmbed(1, {
                                 title: `Listening for requests on ${user.twitch}!`,
@@ -128,6 +141,19 @@ module.exports = class Discord {
                         },
                         previousMap: this.currentlyPlaying[`${user.twitch}`]
                     }
+                }
+            });
+
+            this.discordClient.on("interactionCreate", async (interaction) => {
+                if(!interaction.isCommand()) return;
+                const { commandName } = interaction;
+        
+                if(commandName == "ping") {
+                    interaction.reply({ content: "Pong!" });
+                }
+
+                if(commandName == "stats") {
+                    interaction.reply({ content: "You can find the stats here: https://stats.nzxl.space/"});
                 }
             });
 

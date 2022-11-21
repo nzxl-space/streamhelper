@@ -126,7 +126,7 @@ module.exports = class Bancho {
             let lookupDatabase = await mongoDB.mapData.findOne({ "mapData.id": map.mapData.id });
             if(lookupDatabase) return resolve(lookupDatabase);
 
-            map.score = await pp.calculate({ beatmapId: map.mapData.id });
+            map.score = await pp.calculate({ beatmapId: map.mapData.id }).catch(err => console.log(`Failed to calculate performance for map ${map.mapData.id} ${err}`));
 
             let insertMap = {
                 name: map.name,

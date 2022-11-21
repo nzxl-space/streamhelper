@@ -98,8 +98,10 @@ module.exports = class Twitch {
 
                 if(user["silenced"] && silencedCommands.includes(command.toLowerCase())) return;
 
-                if(adminCommands.includes(command.toLowerCase()))
-                    if(!Object.keys(tags["badges"]).includes("broadcaster")) return;
+                let badges = tags.badges || {};
+                let admin = badges["broadcaster"] ? true : badges["moderator"] ? true : false;
+
+                if(adminCommands.includes(command.toLowerCase()) && !admin) return;
 
                 switch (command.toLowerCase()) {
                     case "silence": {

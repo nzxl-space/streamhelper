@@ -42,7 +42,7 @@ module.exports = class Express {
                         grantType: "authorization_code",
                         redirectUri: this.redirectURI
                     }
-                );
+                ).catch(err => console.log(`Discord API seems to be down ${err}`));
                 if(!token || !token["access_token"]) return res.send(`<a href="#" onclick="window.close()">AUTHORIZATION FAILED; TRY AGAIN!</a>`);
     
                 let user = await oauth.getUser(token.access_token);
