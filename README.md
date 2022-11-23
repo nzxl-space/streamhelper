@@ -3,42 +3,61 @@
 [![Discord](https://discord.com/api/guilds/1024630490336075827/widget.png)](https://osu.nzxl.space)  
 
 # streamhelper - osu.nzxl.space
+StreamHelper is a free to use, powerful and simple beatmap request bot for osu! players.  
+The main purpose of this service is just to make every streamers life easier. It's only 3 clicks away, what are you waiting for?  
 
-StreamHelper is a free to use, powerful and simple *beatmap request* bot for osu! players.  
-The main purpose of this service is just to make every streamers life easier. It's only 3 clicks away, what are you waiting for?
+# How it works
+The bot utilises Discord's Rich Presence feature to obtain beatmap data and looks at your Twitch account link to determine the correct twitch channel.
 
+# Features
+<b>osu!</b>
+- !np [`<pp>`] [`<accuracy in %>` | `<mods>`]: obtain link and info to current beatmap
+- !last [`<pp>`] [`<accuracy in %>` | `<mods>`]: obtain link and info to last beatmap
+- Automatic rendered replay videos of your newly submitted scores using danser ([o!rdr](https://ordr.issou.best/))
 
-# Registration
-**Heads Up!** For this service you need to have a working *Discord Presence* and a linked *Twitch account* to your *Discord*.  
+<b>Management</b>
+- !silence: toggle bot messages and disable all commands
+- !request: toggle beatmap requests
+- !blacklist: [`<username>`]: blacklist a user from sending requests
+- !prefix: [`<new prefix>`]: change bot commands prefix
 
-Why is this needed you ask?  
-The bot heavely depends on *Discord* data, mainly so that you don't need to download any other third party software.  
+<b>Usage Examples</b>
+```
+    !nppp 94% +HDHR
+    !nppp 100%
+    !lastpp +DT
+    !blacklist shigetora
+    !prefix .
+    https://osu.ppy.sh/beatmapsets/11443#osu/43868 -> streamer receives a dm in osu!
+    https://link.issou.best/d8gcS -> Automatic rendered top play (thanks HowlPleb)
+```
 
-After checking that you have both a working *Discord Presence* and a linked *Twitch account*, all you need to is head over to [osu.nzxl.space](https://osu.nzxl.space) and follow the steps on screen.
-
-# Demonstration
+# Demo
 [![Demo Video](https://yt-embed.herokuapp.com/embed?v=GACcNVDrZ7U)](https://www.youtube.com/watch?v=GACcNVDrZ7U)
 
-# Features (WIP)
-1. [x] Twitch chat commands
-- !np - Show current playing map
-- !last - Show previous played map
-- *You can add `pp` to the commands to show the performance values of a map. Example: !nppp 94% +HDHR - !nppp 100% - !nppp +DT*
-2. [x] Automatic rendered replays using o!rdr (Danser)
-3. [ ] Realtime embedded OBS overlays for Performance, Score, etc.
-4. [ ] Beatmap recommendation algorithm (Database population already running 🏃‍♂️)
+# Why use this bot over another?
+This bot can coexist with other bots, therefore, making it a great addition for features lacking in other bots.  
+Unwanted features can be disabled, so that there are no problems with other bots in your chat.  
+You can also request features to be added to the bot!  
 
-# Setup
-**This is only recommended if you're a REAL nerd, because some things can break randomly.**
+# Getting Started
+Setting up this bot is as easy as it gets. No downloads required.  
+- Make sure your Discord Rich Presence (Game Activity) is properly working and your Discord account is linked with your Twitch channel
+- Head over to [osu.nzxl.space](https://osu.nzxl.space/) and follow the steps shown on screen  
 
-1. Requirements:
-- NodeJS (any version after v16)
-- MongoDB
-- [omkelderman/osu-replay-downloader](https://github.com/omkelderman/osu-replay-downloader)
-- [kionell/osu-pp-calculator](https://github.com/kionell/osu-pp-calculator)
-- [o!rdr](https://ordr.issou.best)
+If you're having trouble setting up the bot, contact nzxl#6334 on Discord.
 
-2. Setup
+# Self-hosting this project
+**By self-hosting you will lose access to the already existing huge pool of maps hosted on osu.nzxl.space**  
+**You should only do this if you're concerned about your privacy or you're a nerd ✨**  
+**⚠️ Things _can_ break randomly ⚠️**
+
+<b>Requirements</b>
+- NodeJS v16.15.1 or newer
+- MongoDB with 3 replica sets
+- [omkelderman/osu-replay-downloader](https://github.com/omkelderman/osu-replay-downloader), [kionell/osu-pp-calculator](https://github.com/kionell/osu-pp-calculator), [o!rdr](https://ordr.issou.best)
+
+<b>Setup</b>
 ```
 $ git clone https://github.com/nzxl-space/streamhelper
 $ cd streamhelper
@@ -46,7 +65,7 @@ $ npm install
 $ touch .env
 ```
 
-3. Contents of .env file
+<b>Contents of .env file</b>
 ```
 OSU_USERNAME="<your osu username>"
 OSU_PASSWORD="<your irc password>"
@@ -73,13 +92,10 @@ OSURENDER="<o!rdr api key>"
 DOWNLOADURL="<replay download server>"
 ```
 
-4. Running the bot
+<b>Running the bot</b>
 ```
 $ node .
 ```
 
-GLHF! 😎
-
-# Roadmap and Contributors
-*Fix code*  
-If you find any issues or have feature requests, feel free to open up a PR!!!
+# Roadmap
+If you're interested in seeing what is coming next to you can go [here](https://github.com/nzxl-space/streamhelper/issues/40), there is still a lot to do.

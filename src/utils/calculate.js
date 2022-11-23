@@ -1,8 +1,13 @@
 require("dotenv").config();
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const mongoClient = new MongoClient(process.env.MONGODB, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1, monitorCommands: true });
+
+const moment = require("moment");
+const median = require("median");
+
 const { BeatmapCalculator } = require("@kionell/osu-pp-calculator");
 const pp = new BeatmapCalculator();
+
 const Banchojs = require("bancho.js");
 const banchoClient = new Banchojs.BanchoClient({
     username: process.env.OSU_USERNAME,
@@ -10,203 +15,132 @@ const banchoClient = new Banchojs.BanchoClient({
     apiKey: process.env.OSU_API_KEY
 });
 
-// https://stackoverflow.com/a/72503985
-function mode(arr) {
-    const store = {}
-    arr.forEach((num) => store[num] ? store[num] += 1 : store[num] = 1)
-    return Object.keys(store).sort((a, b) => store[b] - store[a])[0]
+const genreEnum = {
+    0: "Any",
+    1: "Unspecified",
+    2: "Video Game",
+    3: "Anime",
+    4: "Rock",
+    5: "Pop",
+    6: "Other",
+    7: "Novelty",
+    9: "Hip Hop",
+    10: "Electronic",
+    11: "Metal",
+    12: "Classical",
+    13: "Folk",
+    14: "Jazz"
 }
 
-const Genre = {
-    0:   "Any",
-    1:   "Unspecified",
-    2:   "Video Game",
-    3:   "Anime",
-    4:   "Rock",
-    5:   "Pop",
-    6:   "Other",
-    7:   "Novelty",
-    9:   "Hip Hop",
-    10:  "Electronic"
-};
+const modsEnum = {
+    NF: 1<<0,
+    EZ: 1<<1,
+    HD: 1<<3,
+    HR: 1<<4,
+    SD: 1<<5,
+    PF: 1<<14,
+    NC: 1<<9,
+    DT: 1<<6,
+    RX: 1<<7,
+    HT: 1<<8,
+    FL: 1<<10,
+    SO: 1<<12
+}
 
-(() => {
-    mongoClient.connect(async err => {
-        if(err) return console.log("MongoDB failed!");
-        const db = mongoClient.db("osu");
-        const mapData = db.collection("map_data");
+mongoClient.connect(async err => {
+    if(err) return console.log("MongoDB failed!");
+    const mapData = mongoClient.db("osu").collection("map_data");
+    console.log("MongoDB connected!");
 
-        console.log("DB connected");
+    // await banchoClient.connect().then(console.log("Bancho connected!"));
 
+    let username = "kiyomii";
+    let howMany = 10;
+    let data = { scores: await banchoClient.osuApi.user.getBest(username, 0, 100), performance: [], bpm: [], genre: [], stars: [] };
 
-        // UserScore {
-        //     scoreId: 4262431480,
-        //     score: 8411900,
-        //     count300: 473,
-        //     count100: 6,
-        //     count50: 0,
-        //     countMiss: 0,
-        //     maxCombo: 589,
-        //     countKatu: 6,
-        //     countGeki: 100,
-        //     perfect: true,
-        //     enabledMods: 0,
-        //     username: undefined,
-        //     userId: 19012828,
-        //     date: 2022-09-03T15:21:47.000Z,
-        //     rank: 'S',
-        //     pp: 407.234,
-        //     replayAvailable: false,
-        //     beatmapId: 1663107
-        // }
+    console.time("Process time");
+    let done = false;
 
-        // Beatmap {
-        //     approved: 1,
-        //     submitDate: 2018-06-05T01:51:38.000Z,
-        //     approvedDate: 2018-06-30T18:40:21.000Z,
-        //     lastUpdate: 2018-06-23T18:55:39.000Z,
-        //     artist: 'UROBOROS',
-        //     id: 1663107,
-        //     setId: 792964,
-        //     bpm: 204,
-        //     creator: 'Mir',
-        //     creatorId: 8688812,
-        //     difficultyRating: 7.02134,
-        //     diffSize: 4,
-        //     diffOverall: 9.3,
-        //     diffApproach: 9.6,
-        //     diffDrain: 5,
-        //     countNormal: 377,
-        //     countSlider: 102,
-        //     countSpinner: 0,
-        //     hitLength: 77,
-        //     source: '六花の勇者',
-        //     genre: 3,
-        //     language: 3,
-        //     title: 'Black Swallowtail (TV Size)',
-        //     totalLength: 86,
-        //     version: 'Catastrophe',
-        //     fileMd5: '1924bfe2bba850824d197282d735f220',
-        //     mode: 0,
-        //     tags: [
-        //       'rokka',  'no',
-        //       'yuusha', 'opening',
-        //       '2',      'braves',
-        //       'of',     'the',
-        //       'six',    'flowers',
-        //       'lasse',  'flezlin'
-        //     ],
-        //     favouriteCount: 243,
-        //     rating: 9.14156,
-        //     downloadUnavailable: false,
-        //     audioUnavailable: false,
-        //     playcount: 601821,
-        //     passcount: 57141,
-        //     maxCombo: 589,
-        //     diffAim: 3.57962,
-        //     diffSpeed: 3.10201,
-        //     packs: [ 'S669' ],
-        //     storyboard: false,
-        //     video: false
-        // }
+    let i = 0;
+    for (i = 0; i < data["scores"].length; i++) {
+        let score = data.scores[i];
+        let beatmap;
 
-        // Genres
-        // 0   Any
-        // 1   Unspecified
-        // 2   Video Game
-        // 3   Anime
-        // 4   Rock
-        // 5   Pop
-        // 6   Other
-        // 7   Novelty
-        // 9   Hip Hop
-        // 10  Electronic
+        let map = await mapData.findOne({ "mapData.id": score.beatmapId });
+        if(map == null) continue;
 
-        let scores = await banchoClient.osuApi.user.getBest("kiyomii", 0, 5);
+        beatmap = map.mapData;
 
-        let performance = [];
-        let bpm = [];
-        let genre = [];
+        data["performance"].push(Math.round(score.pp));
+        data["genre"].push(Number(beatmap.genre) ? beatmap.genre : 0);
+        data["bpm"].push(beatmap.bpm);
+        data["stars"].push(beatmap.difficulty_rating);
         
-        for (let i = 0; i < scores.length; i++) {
-            let score = scores[i];
-            let beatmap;
-            let map = await mapData.findOne({ "mapData.id": score.beatmapId });
+        console.log(score.scoreId, `DONE (${(i+1)}/${data["scores"].length})`);
+    }
 
-            if(map == null) {
-                let lookup = await banchoClient.osuApi.beatmaps.getByBeatmapId(score.beatmapId);
-                if(lookup.length <= 0) return;
+    while ((i+1) <= data["scores"].length) {
+        await new Promise(p => setTimeout(p, 25));
+    }
+    
+    let genre = genreEnum[data["genre"].sort((a, b) => data["genre"].filter(v => v === a).length - data["genre"].filter(v => v === b).length).pop()];
+    let performance = median(data["performance"]);
+    let bpm = Math.floor(data["bpm"].reduce((a, b) => a + b, 0) / data["bpm"].length);
+    let sr = Math.round(data["stars"].reduce((a, b) => a + b, 0) / data["stars"].length)-Number(String(data["stars"].length).slice(-1)*0.1);
 
-                // existing maps in the db don't have the genre value, so need to update every single map again pogchamp !!
-                map = {};
-                map.mapData = {
-                    "beatmapset_id": lookup[0].setId,
-                    "difficulty_rating": Math.round(lookup[0].difficultyRating * 100) / 100, //5.32
-                    "id": lookup[0].id,
-                    "mode": "osu",
-                    "status": "ranked",
-                    "total_length": lookup[0].totalLength,
-                    "user_id": lookup[0].creatorId,
-                    "version": lookup[0].version,
-                    "accuracy": lookup[0].diffOverall,
-                    "ar": lookup[0].diffApproach,
-                    "bpm": lookup[0].bpm,
-                    "convert": false,
-                    "count_circles": lookup[0].countNormal,
-                    "count_sliders": lookup[0].countSlider,
-                    "count_spinners": lookup[0].countSpinner,
-                    "cs": lookup[0].diffSize,
-                    "deleted_at": null,
-                    "drain": lookup[0].diffDrain,
-                    "hit_length": lookup[0].hitLength,
-                    "is_scoreable": true,
-                    "last_updated": lookup[0].lastUpdate,
-                    "mode_int": 0,
-                    "passcount": lookup[0].passcount,
-                    "playcount": lookup[0].playcount,
-                    "ranked": lookup[0].rankedStatus,
-                    "url": `https://osu.ppy.sh/beatmaps/${lookup[0].id}`,
-                    "checksum": lookup[0].fileMd5,
-                    "max_combo": lookup[0].maxCombo,
-                    "genre": lookup[0].genre
-                }
-                map.score = await pp.calculate({ beatmapId: map.mapData.id }); 
+    console.log(`${username} — Genre: ${genre} | Avg. BPM ${bpm} | Min. SR: ${sr} | Performance: ${performance}pp`);
+    
+    let found = [];
+    let lookup = await mapData.find(
+        { 
+            $and: 
+            [
+                { "ppData.A": { $gt: Math.round(performance*0.75) }},
+                { "ppData.X": { $lt: Math.round(performance*1.75) }},
+                { "mapData.bpm": { $gt: Math.round(bpm-20) }},
+                { "mapData.bpm": { $lt: Math.round(bpm+10) }},
+                { "mapData.genre": (Object.values(genreEnum).map(v => v).indexOf(genre)+1) },
+                { "mapData.difficulty_rating": { $gt: sr }},
+                { "mapData.difficulty_rating": { $lt: (sr+0.5) }},
+                { "mapData.status": "ranked" }
+            ]
+        }
+    ).toArray();
 
-                // await mapData.insertOne({
-                //     name: `${lookup[0].artist} - ${lookup[0].title} [${lookup[0].version}]`,
-                //     setId: map.mapData.id,
-                //     mapData: map.mapData,
-                //     ppData: {
-                //         A: Math.round(map.score.performance[0].totalPerformance),
-                //         S: Math.round(map.score.performance[1].totalPerformance),
-                //         X: Math.round(map.score.performance[2].totalPerformance)
-                //     }
-                // });
-            }
+    while (found.length < howMany) {
+        if(lookup.length <= 0) break;
+        if(found.length == lookup.length) break;
 
-            beatmap = map.mapData;
+        let r = lookup[Math.floor((Math.random()*lookup.length))];
+        if(found.filter(map => map.id == r.mapData.id).length >= 1) continue;
 
-            performance.push(Math.round(score.pp));
-            genre.push(Number(beatmap.genre) ? beatmap.genre : 0);
-            bpm.push(beatmap.bpm);
+        found.push({
+            id: r.mapData.id,
+            name: `[https://osu.ppy.sh/b/${r.mapData.id} ${r.name}]`,
+            mapper: r.mapData.creator,
+            pp: `~${Math.floor((r.ppData.A+r.ppData.S+r.ppData.X)/3)}pp`,
+            status: `${r.mapData.status[0].toUpperCase()}${r.mapData.status.slice(1)}`,
+            stats: `★ ${Math.round(r.mapData.difficulty_rating * 100) / 100}, AR ${r.mapData.ar}, BPM ${r.mapData.bpm} - ${moment(r.mapData.total_length*1000).format("mm:ss")}`,
+        });
+    }
 
-            console.log(score.scoreId, "done");
+    console.log(`Found ${found.length} recommendations!`);
 
-            if(i+1 >= scores.length) {
-                let mostPlayed = mode(genre);
-                let averageBpm = Math.round(bpm.reduce((a, b) => a + b, 0) / bpm.length);
-                let median = (function() {
-                    performance.sort((a, b) => a - b);
-                    var h = Math.floor(performance.length / 2);
+    if(found.length >= 1) {
+        for (let x = 0; x < found.length; x++) {
+            let format = `[${found[x].status}] × ${found[x].name} | (${found[x].stats}) | ${found[x].pp}`;
+            console.log(format);
 
-                    if (performance.length % 2)
-                        return performance[h];
-                
-                    return (performance[h - 1] + performance[h]) / 2.0;
-                })();
-
-                console.log(Genre[mostPlayed], `${averageBpm}bpm`, `${median}pp`);
+            if((x+1) == found.length) {
+                done = true;
             }
         }
-    });
-})();
+    }
+
+    while (!done) {
+        await new Promise(p => setTimeout(p, 25));
+    }
+
+    console.timeEnd("Process time");
+    process.exit();
+});
