@@ -156,7 +156,7 @@ module.exports = class Twitch {
 
                     case "last":
                     case "np":  {
-                        let map = command.toLowerCase() == "np" ? discord.currentlyPlaying[`${twitchId}`] : discord.currentlyPlaying[`${twitchId}`].previousMap;
+                        let map = command.toLowerCase() == "np" ? clone(discord.currentlyPlaying[`${twitchId}`]) : clone(discord.currentlyPlaying[`${twitchId}`].previousMap);
                         if(!map) 
                             return this.twitchClient.reply(channel, `» No data available, try again later 😭`, tags["id"]);
 
@@ -286,7 +286,7 @@ module.exports = class Twitch {
                 result = await result.json();
                 if(result.data.length <= 0) return resolve(null);
 
-                resolve(result.data[0].login);
+                resolve(String(result.data[0].login).toLowerCase());
 
             }).catch(() => resolve(null));
         });
