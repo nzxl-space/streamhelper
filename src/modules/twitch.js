@@ -57,7 +57,9 @@ module.exports = class Twitch {
                     let map = await bancho.getBeatmap(beatmapId && beatmapId.length >= 1 ? beatmapId[0] : setId[0]);
                     if(!map) return;
 
-                    let user = await mongoDB.users.findOne({ twitch: channel.slice(1) });
+                    let twitchId = await this.getId(channel.slice(1));
+
+                    let user = await mongoDB.users.findOne({ twitch_id: twitchId });
                     if(!user || user.length <= 0) return;
 
                     if(user["silencedReq"]) return;
@@ -74,8 +76,8 @@ module.exports = class Twitch {
 
                         let request = `${tags["username"]} × [${data["status"]}] ${data["mapName"]} ${data["mods"]} | (${data["stats"]})`;
 
-                        bancho.banchoClient.getUser(user.osu).sendMessage(request.trim());
-
+                        (await bancho.banchoClient.getUserById(user.osu_id)).sendMessage(request.trim());
+                        
                         if(!user["silenced"]) 
                             this.twitchClient.reply(channel, `» ${map.name} - Request sent!`, tags["id"]);
 
@@ -86,7 +88,9 @@ module.exports = class Twitch {
                     return;
                 }
 
-                let user = await mongoDB.users.findOne({ twitch: channel.slice(1) });
+                let twitchId = await this.getId(channel.slice(1));
+                
+                let user = await mongoDB.users.findOne({ twitch_id: twitchId });
                 if(!user || user.length <= 0) return;
 
                 let prefix = user["prefix"] ? user["prefix"] : "!";
@@ -152,7 +156,7 @@ module.exports = class Twitch {
 
                     case "last":
                     case "np":  {
-                        let map = command.toLowerCase() == "np" ? discord.currentlyPlaying[`${channel.slice(1)}`] : discord.currentlyPlaying[`${channel.slice(1)}`].previousMap;
+                        let map = command.toLowerCase() == "np" ? discord.currentlyPlaying[`${twitchId}`] : discord.currentlyPlaying[`${twitchId}`].previousMap;
                         if(!map) 
                             return this.twitchClient.reply(channel, `» No data available, try again later 😭`, tags["id"]);
 
@@ -163,7 +167,7 @@ module.exports = class Twitch {
 
                     case "lastpp":
                     case "nppp":  {
-                        let map = command.toLowerCase() == "nppp" ? clone(discord.currentlyPlaying[`${channel.slice(1)}`]) : clone(discord.currentlyPlaying[`${channel.slice(1)}`].previousMap);
+                        let map = command.toLowerCase() == "nppp" ? clone(discord.currentlyPlaying[`${twitchId}`]) : clone(discord.currentlyPlaying[`${twitchId}`].previousMap);
                         if(!map) 
                             return this.twitchClient.reply(channel, `» No data available, try again later 😭`, tags["id"]);
 
@@ -202,11 +206,10 @@ module.exports = class Twitch {
     }
 
     /**
-     * Quick check if the given channel is live
-     * @param {String} channel Twitch Username
+     * Refresh/Request API Access
      * @returns {Promise}
      */
-    isLive(channel) {
+    reqOAuth() {
         return new Promise(async (resolve) => {
             let expires = (Number(this.accessToken["expires"])-Math.floor(Date.now() / 1000));
             if(!this.accessToken["token"] || this.accessToken["token"] && expires <= 1000) {
@@ -218,10 +221,25 @@ module.exports = class Twitch {
                     result = await result.json();
                     this.accessToken["token"] = result.access_token;
                     this.accessToken["expires"] = (Math.floor(Date.now() / 1000)+result.expires_in);
-                });
-            }
 
-            fetch(`https://api.twitch.tv/helix/streams?user_login=${channel}`, {
+                    resolve();
+                });
+            } else {
+                resolve();
+            }
+        })
+    }
+
+    /**
+     * Quick check if the given channel is live
+     * @param {String} channel Twitch Username
+     * @returns {Promise}
+     */
+    isLive(channel) {
+        return new Promise(async (resolve) => {
+            await this.reqOAuth();
+
+            fetch(`https://api.twitch.tv/helix/streams?user_id=${channel}`, {
                 method: "GET",
                 headers: {
                     "Accept": "application/json",
@@ -242,6 +260,64 @@ module.exports = class Twitch {
 
                 resolve(false);
             }).catch(() => resolve(false));
+        });
+    }
+
+    /**
+     * Convert twitch id to username
+     * @param {String|Number} id Twitch User ID
+     * @returns {Promise}
+     */
+    getUsername(id) {
+        return new Promise(async (resolve) => {
+            await this.reqOAuth();
+
+            fetch(`https://api.twitch.tv/helix/users?id=${id}`, {
+                method: "GET",
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${this.accessToken["token"]}`,
+                    "Client-Id": this.clientId
+                },
+                retry: 3,
+                pause: 5000
+            }).then(async (result) => {
+                result = await result.json();
+                if(result.data.length <= 0) return resolve(null);
+
+                resolve(result.data[0].login);
+
+            }).catch(() => resolve(null));
+        });
+    }
+
+    /**
+     * Convert twitch username to id
+     * @param {String|Number} username Twitch Username
+     * @returns {Promise}
+     */
+    getId(username) {
+        return new Promise(async (resolve) => {
+            await this.reqOAuth();
+
+            fetch(`https://api.twitch.tv/helix/users?login=${username}`, {
+                method: "GET",
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${this.accessToken["token"]}`,
+                    "Client-Id": this.clientId
+                },
+                retry: 3,
+                pause: 5000
+            }).then(async (result) => {
+                result = await result.json();
+                if(result.data.length <= 0) return resolve(null);
+
+                resolve(result.data[0].id);
+
+            }).catch(() => resolve(null));
         });
     }
 }

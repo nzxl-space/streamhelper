@@ -5,6 +5,7 @@ const io = require("socket.io-client");
 const FormData = require("form-data");
 const { BeatmapCalculator } = require("@kionell/osu-pp-calculator");
 const pp = new BeatmapCalculator();
+const { LookupType } = require("nodesu");
 
 module.exports = class Bancho {
     constructor(ircUsername, ircPassword, apiKey, clientId, clientSecret, ordrKey, downloadURL) {
@@ -271,11 +272,11 @@ module.exports = class Bancho {
         return new Promise(async (resolve) => {
             const { mongoDB, discord, twitch } = require("../app");
 
-            let scores = await this.banchoClient.osuApi.user.getBest(username, undefined, 15);
+            let scores = await this.banchoClient.osuApi.user.getBest(username, undefined, 15, LookupType.id);
             scores = scores.filter(s => s.replayAvailable == true && moment(Date.now()).diff(s.date, "minutes") <= 10);
 
             if(scores.length >= 1) {
-                let user = await mongoDB.users.findOne({ osu: username });
+                let user = await mongoDB.users.findOne({ osu_id: username });
                 if(!user || user.length <= 0) return;
 
                 scores.forEach(async (score) => {

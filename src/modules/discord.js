@@ -86,52 +86,61 @@ module.exports = class Discord {
                             return;
                         }
 
-                        await mongoDB.users.updateOne({ userId: user.userId }, { $set: { osu: matched[1].trim() }});
+                        let osuId = await bancho.banchoClient.osuApi.user.get(matched[1].trim());
+                        if(!osuId || osuId.length <= 0) {
+                            await mongoDB.users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
+                            return;
+                        }
+
+                        await mongoDB.users.updateOne({ userId: user.userId }, { $set: { osu: matched[1].trim(), osu_id: osuId.id }});
                         await this.updateRole(user.userId, "regular");
                     }
                 }
 
-                let isJoined = twitch.twitchClient.getChannels().includes(`#${user.twitch}`);
-                let diff = moment(Date.now()).diff(this.lastChecked[`${user.twitch}`], "minutes");
+                let twitchUsername = await twitch.getUsername(user.twitch_id);
+                if(!twitchUsername) return;
 
-                if(!this.lastChecked[`${user.twitch}`] || Number(diff) && diff >= 3) {
-                    this.lastChecked[`${user.twitch}`] = Date.now();
+                let isJoined = twitch.twitchClient.getChannels().includes(`#${twitchUsername}`);
+                let diff = moment(Date.now()).diff(this.lastChecked[`${user.twitch_id}`], "minutes");
 
-                    let live = await twitch.isLive(user.twitch);
+                if(!this.lastChecked[`${user.twitch_id}`] || Number(diff) && diff >= 3) {
+                    this.lastChecked[`${user.twitch_id}`] = Date.now();
+
+                    let live = await twitch.isLive(user.twitch_id);
 
                     if(!isJoined && live) {
-                        twitch.twitchClient.join(`#${user.twitch}`);
+                        twitch.twitchClient.join(`#${twitchUsername}`);
 
-                        delete this.currentlyPlaying[`${user.twitch}`]; // delete if it exists lol it may contain outdated data
+                        delete this.currentlyPlaying[`${user.twitch_id}`]; // delete if it exists lol it may contain outdated data
 
                         await this.sendMessage(
                             this.buildEmbed(1, {
-                                title: `Listening for requests on ${user.twitch}!`,
+                                title: `Listening for requests on ${twitchUsername}!`,
                                 description: `${user.osu}`,
-                                url: `https://twitch.tv/${user.twitch}`,
+                                url: `https://twitch.tv/${twitchUsername}`,
                                 fields: [],
-                                action: `𝗕𝗢𝗧 𝗝𝗢𝗜𝗡𝗘𝗗 𝗖𝗛𝗔𝗡𝗡𝗘𝗟 » ${user.twitch}`,
+                                action: `𝗕𝗢𝗧 𝗝𝗢𝗜𝗡𝗘𝗗 𝗖𝗛𝗔𝗡𝗡𝗘𝗟 » ${twitchUsername}`,
                                 footer: "beatmap_requests_enabled",
-                                image: `https://static-cdn.jtvnw.net/previews-ttv/live_user_${user.twitch}-440x248.jpg`
+                                image: `https://static-cdn.jtvnw.net/previews-ttv/live_user_${twitchUsername}-440x248.jpg`
                             })
                         );
                     } else if(isJoined && !live) {
-                        twitch.twitchClient.part(`#${user.twitch}`);
+                        twitch.twitchClient.part(`#${twitchUsername}`);
                     }
                 }
 
-                await bancho.getScores(user.osu);
+                await bancho.getScores(user.osu_id);
 
                 if(activity.length <= 0) return; // If no game activity found, just return and disable currentlyPlaying
 
                 let mapName = activity[0].details;
                 if(!mapName) return;
 
-                if(!this.currentlyPlaying[`${user.twitch}`] || this.currentlyPlaying[`${user.twitch}`] && this.currentlyPlaying[`${user.twitch}`].name != mapName) {
+                if(!this.currentlyPlaying[`${user.twitch_id}`] || this.currentlyPlaying[`${user.twitch_id}`] && this.currentlyPlaying[`${user.twitch_id}`].name != mapName) {
 
                     let map = await bancho.getBeatmap(mapName);
 
-                    this.currentlyPlaying[`${user.twitch}`] = {
+                    this.currentlyPlaying[`${user.twitch_id}`] = {
                         name: mapName,
                         mapData: map.mapData,
                         ppData: {
@@ -139,7 +148,7 @@ module.exports = class Discord {
                             S: map.ppData["S"],
                             X: map.ppData["X"]
                         },
-                        previousMap: this.currentlyPlaying[`${user.twitch}`]
+                        previousMap: this.currentlyPlaying[`${user.twitch_id}`]
                     }
                 }
             });
@@ -173,8 +182,9 @@ module.exports = class Discord {
                 if(!result || result.length <= 0) return;
                 
                 if(result["twitch"]) {
-                    if(twitch.twitchClient.getChannels().includes(`#${result.twitch}`))
-                        twitch.twitchClient.part(`#${result.twitch}`);
+                    let twitchUsername = await twitch.getUsername(result.twitch_id);
+                    if(twitch.twitchClient.getChannels().includes(`#${twitchUsername}`))
+                        twitch.twitchClient.part(`#${twitchUsername}`);
                 }
 
                 await mongoDB.users.deleteOne({ userId: result.userId });

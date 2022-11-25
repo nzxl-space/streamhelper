@@ -30,7 +30,7 @@ module.exports = class Express {
             app.get("/", (req, res) => res.render("index", { discordURL: this.authorizeURL }));
 
             app.get("/discord", async (req, res) => {
-                const { mongoDB, discord } = require("../app");
+                const { mongoDB, discord, twitch } = require("../app");
                 if(!req.query.code) return res.send(`<script>window.close()</script>`);
     
                 let token = await oauth.tokenRequest(
@@ -42,7 +42,7 @@ module.exports = class Express {
                         grantType: "authorization_code",
                         redirectUri: this.redirectURI
                     }
-                ).catch(err => console.log(`Discord API seems to be down ${err}`));
+                ).catch(err => { return console.log(`Discord API seems to be down ${err}`) });
                 if(!token || !token["access_token"]) return res.send(`<a href="#" onclick="window.close()">AUTHORIZATION FAILED; TRY AGAIN!</a>`);
     
                 let user = await oauth.getUser(token.access_token);
@@ -52,9 +52,14 @@ module.exports = class Express {
     
                 let conns = await oauth.getUserConnections(token.access_token);
     
-                let twitch = conns.filter(x => x.type == "twitch");
-                if(twitch.length <= 0) {
+                let twitchUser = conns.filter(x => x.type == "twitch");
+                if(twitchUser.length <= 0) {
                     return res.send(`<a href="#" onclick="window.close()">NO LINKED TWITCH CHANNEL FOUND; TRY AGAIN!</a>`);
+                }
+
+                let twitchId = await twitch.getId(twitchUser[0].name);
+                if(twitchId == null) {
+                    return res.send(`<a href="#" onclick="window.close()">NO LINKED TWITCH CHANNEL FOUND; TRY AGAIN!</a>`); 
                 }
     
                 let guild = discord.discordClient.guilds.cache.get(this.guild);
@@ -75,8 +80,10 @@ module.exports = class Express {
                     {
                         userId: user.id,
                         discordName: `${user.username}#${user.discriminator}`,
-                        twitch: `${twitch[0].name}`,
-                        osu: null
+                        twitch: `${twitchUser[0].name}`,
+                        twitch_id: `${twitchId}`,
+                        osu: null,
+                        osu_id: null
                     }
                 );
     
