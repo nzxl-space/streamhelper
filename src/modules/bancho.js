@@ -292,6 +292,9 @@ module.exports = class Bancho {
 
                     let accuracy = Math.round(100 * (score.count50*50 + score.count100*100 + score.count300*300) / (score.count50*300 + score.count100*300 + score.count300*300) * 100) / 100;
                     let map = await this.getBeatmap(score.beatmapId);
+                    
+                    let cache = discord.cache[`${user.twitch_id}`];
+                    if(!cache) return;
 
                     await discord.sendMessage(
                         discord.buildEmbed(3, {
@@ -315,14 +318,11 @@ module.exports = class Bancho {
                                     inline: true
                                 }
                             ],
-                            action: `𝗡𝗘𝗪 𝗦𝗖𝗢𝗥𝗘 𝗥𝗘𝗖𝗢𝗥𝗗𝗘𝗗 » ${o.ircUsername}`,
+                            action: `𝗡𝗘𝗪 𝗦𝗖𝗢𝗥𝗘 𝗥𝗘𝗖𝗢𝗥𝗗𝗘𝗗 » ${cache.osu.ircUsername}`,
                             footer: "new_top_score",
                             image: `https://assets.ppy.sh/beatmaps/${map.mapData.beatmapset_id}/covers/cover.jpg`
                         })
                     );
-
-                    let cache = discord.cache[`${user.twitch_id}`];
-                    if(!cache) return;
 
                     if(twitch.twitchClient.getChannels().includes(`#${cache.twitch}`) && !user["silenced"]) {
                         twitch.twitchClient.say(`#${cache.twitch}`, `New top play recorded! You can watch it here: ${url} 🤙`);
