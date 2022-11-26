@@ -124,10 +124,11 @@ module.exports = class Bancho {
             map.mapData = await this.lookupBeatmap(beatmapName, mode);
             if(typeof map.mapData !== "object") return;
 
-            let lookupDatabase = await mongoDB.mapData.findOne({ "mapData.id": map.mapData.id });
+            let lookupDatabase = await mongoDB.mapData.findOne({ "mapData.id": Number(map.mapData.id) });
             if(lookupDatabase) return resolve(lookupDatabase);
 
             map.score = await pp.calculate({ beatmapId: map.mapData.id }).catch(err => console.log(`Failed to calculate performance for map ${map.mapData.id} ${err}`));
+            if(!map.score || map.score.length <= 0) return;
 
             let insertMap = {
                 name: map.name,
@@ -170,6 +171,12 @@ module.exports = class Bancho {
                 })
             );
 
+            await mongoDB.logs.insertOne({
+                type: "map",
+                beatmap_id: Number(map.mapData.id),
+                timestamp: Date.now()
+            });
+
             resolve(insertMap);
         });
     }
@@ -184,7 +191,7 @@ module.exports = class Bancho {
             const { mongoDB } = require("../app");
 
             let map = await mongoDB.mapData.findOne({ 
-                $or: [{ mapData: { $elemMatch: { id: id } }}, { mapData: { $elemMatch: { beatmapset_id: id } }}, { name: id }]
+                $or: [{ mapData: { $elemMatch: { id: Number(id) } }}, { mapData: { $elemMatch: { beatmapset_id: Number(id) } }}, { name: id }]
             });
             
             if(!map) {
@@ -276,26 +283,23 @@ module.exports = class Bancho {
             scores = scores.filter(s => s.replayAvailable == true && moment(Date.now()).diff(s.date, "minutes") <= 10);
 
             if(scores.length >= 1) {
-                let user = await mongoDB.users.findOne({ osu_id: username });
+                let user = await mongoDB.users.findOne({ osu_id: Number(username) });
                 if(!user || user.length <= 0) return;
 
                 scores.forEach(async (score) => {
                     if(user["replays"] && Object.keys(user.replays).includes(`${score.beatmapId}`)) return;
 
-                    await mongoDB.users.updateOne({ userId: user.userId }, { $set: { [`replays.${score.beatmapId}`]: `Rendering` }});
+                    await mongoDB.users.updateOne({ id: Number(user.id) }, { $set: { [`replays.${score.beatmapId}`]: `Rendering` }});
 
                     let replay = await fetch(`${this.downloadURL}?userId=${score.userId}&beatmapId=${score.beatmapId}`);
                     let url = await this.render(replay.body);
 
-                    await mongoDB.users.updateOne({ userId: user.userId }, { $set: { [`replays.${score.beatmapId}`]: `${url}` }});
-
-                    if(!user["silenced"]) {
-                        if(twitch.twitchClient.getChannels().includes(`#${user.twitch}`))
-                            twitch.twitchClient.say(`#${user.twitch}`, `/me ‼️ New top play recorded! You can watch it here: ${url} 🤙`);
-                    }
+                    await mongoDB.users.updateOne({ id: Number(user.id) }, { $set: { [`replays.${score.beatmapId}`]: `${url}` }});
 
                     let accuracy = Math.round(100 * (score.count50*50 + score.count100*100 + score.count300*300) / (score.count50*300 + score.count100*300 + score.count300*300) * 100) / 100;
                     let map = await this.getBeatmap(score.beatmapId);
+
+                    let o = (await this.banchoClient.getUserById(user.osu_id));
 
                     await discord.sendMessage(
                         discord.buildEmbed(3, {
@@ -319,11 +323,24 @@ module.exports = class Bancho {
                                     inline: true
                                 }
                             ],
-                            action: `𝗡𝗘𝗪 𝗦𝗖𝗢𝗥𝗘 𝗥𝗘𝗖𝗢𝗥𝗗𝗘𝗗 » ${user.osu}`,
+                            action: `𝗡𝗘𝗪 𝗦𝗖𝗢𝗥𝗘 𝗥𝗘𝗖𝗢𝗥𝗗𝗘𝗗 » ${o.ircUsername}`,
                             footer: "new_top_score",
                             image: `https://assets.ppy.sh/beatmaps/${map.mapData.beatmapset_id}/covers/cover.jpg`
                         })
                     );
+
+                    let twitchUsername = await twitch.getUsername(user.twitch_id);
+                    if(twitchUsername && twitch.twitchClient.getChannels().includes(`#${twitchUsername}`) && !user["silenced"]) {
+                        twitch.twitchClient.say(`#${twitchUsername}`, `New top play recorded! You can watch it here: ${url} 🤙`);
+                    } else {
+                        o.sendMessage(`[REPLAY] × New top play recorded! You can watch it here: ${url} =)`);
+                    }
+
+                    await mongoDB.logs.insertOne({
+                        type: "replay",
+                        replay: url,
+                        timestamp: Date.now()
+                    });
                 });
 
                 return resolve();

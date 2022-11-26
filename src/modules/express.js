@@ -47,7 +47,7 @@ module.exports = class Express {
     
                 let user = await oauth.getUser(token.access_token);
     
-                let exists = await mongoDB.users.findOne({ userId: user.id });
+                let exists = await mongoDB.users.findOne({ id: Number(user.id) });
                 if(exists) return res.send(`<script>window.close()</script>`);
     
                 let conns = await oauth.getUserConnections(token.access_token);
@@ -78,12 +78,15 @@ module.exports = class Express {
     
                 await mongoDB.users.insertOne(
                     {
-                        userId: user.id,
-                        discordName: `${user.username}#${user.discriminator}`,
-                        twitch: `${twitchUser[0].name}`,
-                        twitch_id: `${twitchId}`,
-                        osu: null,
-                        osu_id: null
+                        id: Number(user.id),
+                        identifier: `${user.username}#${user.discriminator}`,
+                        twitch_id: Number(twitchId),
+                        osu_id: null,
+                        silenced: false,
+                        silencedReq: false,
+                        blacklist: [],
+                        replays: [],
+                        activityRetryCount: 0
                     }
                 );
     
@@ -91,6 +94,13 @@ module.exports = class Express {
                 await discord.updateRole(user.id, "on hold");
     
                 console.log(`${user.username}#${user.discriminator} has been registered to the service!`);
+
+                await mongoDB.logs.insertOne({
+                    type: "registration",
+                    user_id: Number(user.id),
+                    timestamp: Date.now(),
+                    channel: Number(user.twitch_id)
+                });
     
                 return res.send(`<script>window.close()</script>`);
             });

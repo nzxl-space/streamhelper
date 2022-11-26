@@ -59,12 +59,12 @@ module.exports = class Twitch {
 
                     let twitchId = await this.getId(channel.slice(1));
 
-                    let user = await mongoDB.users.findOne({ twitch_id: twitchId });
+                    let user = await mongoDB.users.findOne({ twitch_id: Number(twitchId) });
                     if(!user || user.length <= 0) return;
 
                     if(user["silencedReq"]) return;
 
-                    if(user["osu"]) {
+                    if(user["osu_id"]) {
                         if(user["blacklist"] && user["blacklist"].includes(tags["username"])) return;
 
                         let data = {
@@ -81,6 +81,13 @@ module.exports = class Twitch {
                         if(!user["silenced"]) 
                             this.twitchClient.reply(channel, `» ${map.name} - Request sent!`, tags["id"]);
 
+                        await mongoDB.logs.insertOne({
+                            type: "beatmap_request",
+                            beatmap_id: Number(map.mapData.id),
+                            timestamp: Date.now(),
+                            channel: Number(user.twitch_id)
+                        });
+
                         block.push(tags["username"]);
                         setTimeout(() => block = block.filter(u => u !== tags["username"]), 3*1000);
                     }
@@ -90,7 +97,7 @@ module.exports = class Twitch {
 
                 let twitchId = await this.getId(channel.slice(1));
                 
-                let user = await mongoDB.users.findOne({ twitch_id: twitchId });
+                let user = await mongoDB.users.findOne({ twitch_id: Number(twitchId) });
                 if(!user || user.length <= 0) return;
 
                 let prefix = user["prefix"] ? user["prefix"] : "!";
@@ -109,14 +116,14 @@ module.exports = class Twitch {
 
                 switch (command.toLowerCase()) {
                     case "silence": {
-                        await mongoDB.users.updateOne({ userId: user.userId }, [ { $set: { silenced: { $eq: [false, "$silenced"] } } } ]);
+                        await mongoDB.users.updateOne({ id: Number(user.id) }, [ { $set: { silenced: { $eq: [false, "$silenced"] } } } ]);
                         this.twitchClient.reply(channel, `» ${!user["silenced"] ? "Silenced" : "Enabled"} all bot messages for this channel`, tags["id"]);
 
                         break;
                     }
 
                     case "request": {
-                        await mongoDB.users.updateOne({ userId: user.userId }, [ { $set: { silencedReq: { $eq: [false, "$silencedReq"] } } } ]);
+                        await mongoDB.users.updateOne({ id: Number(user.id) }, [ { $set: { silencedReq: { $eq: [false, "$silencedReq"] } } } ]);
                         this.twitchClient.reply(channel, `» ${!user["silencedReq"] ? "Silenced" : "Enabled"} beatmap requests`, tags["id"]);
 
                         break;
@@ -129,11 +136,11 @@ module.exports = class Twitch {
                         let fixed = args[0].match(/[a-zA-Z0-9_]+/g, "").join("").trim().toLowerCase();
 
                         if(user["blacklist"] && user["blacklist"].includes(fixed)) {
-                            await mongoDB.users.updateOne({ userId: user.userId }, { $pull: { blacklist: fixed } });
+                            await mongoDB.users.updateOne({ id: Number(user.id) }, { $pull: { blacklist: fixed } });
                             return this.twitchClient.reply(channel, `» Specified user was removed from the blacklist`, tags["id"]);
                         }
     
-                        await mongoDB.users.updateOne({ userId: user.userId }, [ { $set: { blacklist: { $ifNull: [ { $concatArrays: ["$blacklist", [fixed]] }, [fixed] ] } } } ]);
+                        await mongoDB.users.updateOne({ id: Number(user.id) }, [ { $set: { blacklist: { $ifNull: [ { $concatArrays: ["$blacklist", [fixed]] }, [fixed] ] } } } ]);
                         this.twitchClient.reply(channel, `» Specified user is now blacklisted from the bot`, tags["id"]);
 
                         break;
@@ -148,7 +155,7 @@ module.exports = class Twitch {
                         if(!allowedPrefixes.includes(args[0].trim()))
                             return this.twitchClient.reply(channel, `» This prefix is not allowed, please try one of these: ${allowedPrefixes.join("")}`, tags["id"]);
 
-                        await mongoDB.users.updateOne({ userId: user.userId }, { $set: { prefix: args[0].trim() }});
+                        await mongoDB.users.updateOne({ id: Number(user.id) }, { $set: { prefix: args[0].trim() }});
                         this.twitchClient.reply(channel, `» Prefix successfully changed`, tags["id"]);
 
                         break;
@@ -199,6 +206,13 @@ module.exports = class Twitch {
                         break;
                     }
                 }
+
+                await mongoDB.logs.insertOne({
+                    type: "twitch_message",
+                    message_id: tags["id"],
+                    timestamp: Date.now(),
+                    channel: Number(user.twitch_id)
+                });
             });
 
             this.twitchClient.connect().catch(() => reject());
@@ -315,7 +329,7 @@ module.exports = class Twitch {
                 result = await result.json();
                 if(result.data.length <= 0) return resolve(null);
 
-                resolve(result.data[0].id);
+                resolve(Number(result.data[0].id));
 
             }).catch(() => resolve(null));
         });

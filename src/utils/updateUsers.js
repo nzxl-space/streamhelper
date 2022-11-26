@@ -23,11 +23,7 @@ mongoClient.connect(async err => {
     });
     let twitchCreds = await oauth.json();
 
-    let query = await users.find(
-        {
-            "osu_id": null
-        }
-    ).toArray();
+    let query = await users.find().toArray();
 
     for (let i = 0; i < query.length; i++) {
         let user = await banchoClient.osuApi.user.get(query[i].osu);
@@ -51,9 +47,7 @@ mongoClient.connect(async err => {
             if(result.data.length <= 0) {
                 return console.log(`-----------------\n${query[i].twitch} not found`);
             }
-            let twitchId = result.data[0].id;
-
-            console.log(result.data);
+            let twitchId = Number(result.data[0].id);
 
             console.log(`-----------------\n${query[i].osu} -> ${user.id}\n${query[i].twitch} -> ${twitchId}`);
 

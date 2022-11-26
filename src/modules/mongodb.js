@@ -8,6 +8,7 @@ module.exports = class MongoDB {
         // export vars
         this.users = null;
         this.mapData = null;
+        this.logs = null;
         this.activeUsers = null;
     }
 
@@ -20,7 +21,8 @@ module.exports = class MongoDB {
 
                 this.users = db.collection("users");
                 this.mapData = db.collection("map_data");
-                this.activeUsers = await this.users.distinct("userId");
+                this.logs = db.collection("logs");
+                this.activeUsers = await this.users.distinct("id");
 
                 resolve();
             });

@@ -51,17 +51,17 @@ module.exports = class Discord {
 
             this.discordClient.on("presenceUpdate", async (_, presence) => {
                 const { mongoDB, twitch, bancho } = require("../app");
-                if(!mongoDB.activeUsers.includes(presence.userId) || presence.guild.id !== this.guild) return;
+                if(!mongoDB.activeUsers.includes(Number(presence.userId)) || presence.guild.id !== this.guild) return;
 
-                let user = await mongoDB.users.findOne({ userId: presence.userId });
+                let user = await mongoDB.users.findOne({ id: Number(presence.userId) });
                 if(!user || user.length <= 0) return;
 
                 let activity = presence.activities.filter(p => p.applicationId == "367827983903490050");
 
-                if(user.osu == null) {
+                if(user.osu_id == null) {
                     if(user["activityRetryCount"] && user["activityRetryCount"] >= 20) {
-                        await this.deleteUser(user.userId);
-                        await this.updateRole(user.userId, "on hold");
+                        await this.deleteUser(user.id);
+                        await this.updateRole(user.id, "on hold");
                         await this.sendMessage(
                             this.buildEmbed(2, {
                                 title: `Beatmap Requests Disabled`,
@@ -70,32 +70,35 @@ module.exports = class Discord {
                                 action: `𝗡𝗢𝗧𝗜𝗖𝗘`,
                                 footer: "presence_not_found"
                             }),
-                        user.userId);
+                        user.id);
                         return;
                     }
 
                     if(activity.length <= 0 || activity.length >= 1 && activity[0].assets == null) {
-                        await mongoDB.users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
+                        await mongoDB.users.updateOne({ id: Number(user.id) }, { $inc: { activityRetryCount: 1 } });
                         return;
                     }
 
                     if(activity[0].assets.largeText) {
                         let matched = activity[0].assets.largeText.match(presencePattern);
                         if(!matched || matched.length <= 0) {
-                            await mongoDB.users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
+                            await mongoDB.users.updateOne({ id: Number(user.id) }, { $inc: { activityRetryCount: 1 } });
                             return;
                         }
 
                         let osuId = await bancho.banchoClient.osuApi.user.get(matched[1].trim());
                         if(!osuId || osuId.length <= 0) {
-                            await mongoDB.users.updateOne({ userId: user.userId }, { $inc: { activityRetryCount: 1 } });
+                            await mongoDB.users.updateOne({ id: Number(user.id) }, { $inc: { activityRetryCount: 1 } });
                             return;
                         }
 
-                        await mongoDB.users.updateOne({ userId: user.userId }, { $set: { osu: matched[1].trim(), osu_id: osuId.id }});
-                        await this.updateRole(user.userId, "regular");
+                        await mongoDB.users.updateOne({ id: Number(user.id) }, { $set: { osu_id: Number(osuId.id) }});
+                        await this.updateRole(user.id, "regular");
                     }
                 }
+
+                let o = (await bancho.banchoClient.getUserById(user.osu_id));
+                if(!o) return;
 
                 let twitchUsername = await twitch.getUsername(user.twitch_id);
                 if(!twitchUsername) return;
@@ -116,7 +119,7 @@ module.exports = class Discord {
                         await this.sendMessage(
                             this.buildEmbed(1, {
                                 title: `Listening for requests on ${twitchUsername}!`,
-                                description: `${user.osu}`,
+                                description: `${o.ircUsername}`,
                                 url: `https://twitch.tv/${twitchUsername}`,
                                 fields: [],
                                 action: `𝗕𝗢𝗧 𝗝𝗢𝗜𝗡𝗘𝗗 𝗖𝗛𝗔𝗡𝗡𝗘𝗟 » ${twitchUsername}`,
@@ -124,6 +127,14 @@ module.exports = class Discord {
                                 image: `https://static-cdn.jtvnw.net/previews-ttv/live_user_${twitchUsername}-440x248.jpg`
                             })
                         );
+
+                        await mongoDB.logs.insertOne({
+                            type: "live",
+                            user_id: Number(user.id),
+                            timestamp: Date.now(),
+                            channel: Number(user.twitch_id)
+                        });
+                        
                     } else if(isJoined && !live) {
                         twitch.twitchClient.part(`#${twitchUsername}`);
                     }
@@ -150,6 +161,13 @@ module.exports = class Discord {
                         },
                         previousMap: this.currentlyPlaying[`${user.twitch_id}`]
                     }
+
+                    await mongoDB.logs.insertOne({
+                        type: "presence",
+                        user_id: Number(user.id),
+                        timestamp: Date.now(),
+                        channel: Number(user.twitch_id)
+                    });
                 }
             });
 
@@ -178,7 +196,7 @@ module.exports = class Discord {
     deleteUser(user) {
         return new Promise((resolve) => {
             const { mongoDB, twitch } = require("../app");
-            mongoDB.users.findOne({ userId: user }).then(async (result) => {
+            mongoDB.users.findOne({ id: user }).then(async (result) => {
                 if(!result || result.length <= 0) return;
                 
                 if(result["twitch"]) {
@@ -187,12 +205,12 @@ module.exports = class Discord {
                         twitch.twitchClient.part(`#${twitchUsername}`);
                 }
 
-                await mongoDB.users.deleteOne({ userId: result.userId });
+                await mongoDB.users.deleteOne({ id: result.id });
     
-                if(mongoDB.activeUsers.indexOf(result.userId) > -1)
-                    mongoDB.activeUsers.splice(mongoDB.activeUsers.indexOf(result.userId), 1);
+                if(mongoDB.activeUsers.indexOf(result.id) > -1)
+                    mongoDB.activeUsers.splice(mongoDB.activeUsers.indexOf(result.id), 1);
     
-                console.log(`${result.discordName} has been removed from the service!`);
+                console.log(`${result.identifier} has been removed from the service!`);
 
                 resolve();
             });
