@@ -60,8 +60,8 @@ module.exports = class Discord {
 
                 if(user.osu_id == null) {
                     if(user["activityRetryCount"] && user["activityRetryCount"] >= 20) {
-                        await this.deleteUser(user.id);
-                        await this.updateRole(user.id, "on hold");
+                        await this.deleteUser(presence.userId);
+                        await this.updateRole(presence.userId, "on hold");
                         await this.sendMessage(
                             this.buildEmbed(2, {
                                 title: `Beatmap Requests Disabled`,
@@ -70,7 +70,7 @@ module.exports = class Discord {
                                 action: `𝗡𝗢𝗧𝗜𝗖𝗘`,
                                 footer: "presence_not_found"
                             }),
-                        user.id);
+                        presence.userId);
                         return;
                     }
 
@@ -93,7 +93,7 @@ module.exports = class Discord {
                         }
 
                         await mongoDB.users.updateOne({ id: Number(user.id) }, { $set: { osu_id: Number(osuId.id) }});
-                        await this.updateRole(user.id, "regular");
+                        await this.updateRole(presence.userId, "regular");
                     }
                 }
 
