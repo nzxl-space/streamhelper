@@ -21,7 +21,6 @@ module.exports = class MongoDB {
 
                 this.users = db.collection("users");
                 this.mapData = db.collection("map_data");
-                this.logs = db.collection("logs");
                 this.activeUsers = await this.users.distinct("id");
 
                 resolve();

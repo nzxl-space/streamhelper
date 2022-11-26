@@ -46,6 +46,10 @@ module.exports = class Twitch {
                 const { mongoDB, bancho, discord } = require("../app");
                 if(self) return;
 
+                // what the F is this?? i dont know but it works lol
+                // eslint-disable-next-line no-unused-vars
+                let cache = Object.entries(discord.cache).filter(([key, value]) => value.twitch == channel.slice(1))[0].filter(x => x.twitch == channel.slice(1))[0];
+
                 let beatmapId = message.match(Regex.beatmapId);
                 let setId = message.match(Regex.setId);
                 let beatmapMods = message.match(Regex.beatmapMods);
@@ -57,9 +61,7 @@ module.exports = class Twitch {
                     let map = await bancho.getBeatmap(beatmapId && beatmapId.length >= 1 ? beatmapId[0] : setId[0]);
                     if(!map) return;
 
-                    let twitchId = await this.getId(channel.slice(1));
-
-                    let user = await mongoDB.users.findOne({ twitch_id: Number(twitchId) });
+                    let user = await mongoDB.users.findOne({ twitch_id: Number(cache.twitch_id) });
                     if(!user || user.length <= 0) return;
 
                     if(user["silencedReq"]) return;
@@ -76,17 +78,10 @@ module.exports = class Twitch {
 
                         let request = `${tags["username"]} × [${data["status"]}] ${data["mapName"]} ${data["mods"]} | (${data["stats"]})`;
 
-                        (await bancho.banchoClient.getUserById(user.osu_id)).sendMessage(request.trim());
+                        await bancho.banchoClient.getUser(cache.osu.ircUsername).sendMessage(request.trim());
                         
                         if(!user["silenced"]) 
                             this.twitchClient.reply(channel, `» ${map.name} - Request sent!`, tags["id"]);
-
-                        await mongoDB.logs.insertOne({
-                            type: "beatmap_request",
-                            beatmap_id: Number(map.mapData.id),
-                            timestamp: Date.now(),
-                            channel: Number(user.twitch_id)
-                        });
 
                         block.push(tags["username"]);
                         setTimeout(() => block = block.filter(u => u !== tags["username"]), 3*1000);
@@ -95,9 +90,7 @@ module.exports = class Twitch {
                     return;
                 }
 
-                let twitchId = await this.getId(channel.slice(1));
-                
-                let user = await mongoDB.users.findOne({ twitch_id: Number(twitchId) });
+                let user = await mongoDB.users.findOne({ twitch_id: Number(cache.twitch_id) });
                 if(!user || user.length <= 0) return;
 
                 let prefix = user["prefix"] ? user["prefix"] : "!";
@@ -163,7 +156,7 @@ module.exports = class Twitch {
 
                     case "last":
                     case "np":  {
-                        let map = command.toLowerCase() == "np" ? clone(discord.currentlyPlaying[`${twitchId}`]) : clone(discord.currentlyPlaying[`${twitchId}`].previousMap);
+                        let map = command.toLowerCase() == "np" ? clone(discord.currentlyPlaying[`${cache.twitch_id}`]) : clone(discord.currentlyPlaying[`${cache.twitch_id}`].previousMap);
                         if(!map) 
                             return this.twitchClient.reply(channel, `» No data available, try again later 😭`, tags["id"]);
 
@@ -174,7 +167,7 @@ module.exports = class Twitch {
 
                     case "lastpp":
                     case "nppp":  {
-                        let map = command.toLowerCase() == "nppp" ? clone(discord.currentlyPlaying[`${twitchId}`]) : clone(discord.currentlyPlaying[`${twitchId}`].previousMap);
+                        let map = command.toLowerCase() == "nppp" ? clone(discord.currentlyPlaying[`${cache.twitch_id}`]) : clone(discord.currentlyPlaying[`${cache.twitch_id}`].previousMap);
                         if(!map) 
                             return this.twitchClient.reply(channel, `» No data available, try again later 😭`, tags["id"]);
 
@@ -206,13 +199,6 @@ module.exports = class Twitch {
                         break;
                     }
                 }
-
-                await mongoDB.logs.insertOne({
-                    type: "twitch_message",
-                    message_id: tags["id"],
-                    timestamp: Date.now(),
-                    channel: Number(user.twitch_id)
-                });
             });
 
             this.twitchClient.connect().catch(() => reject());

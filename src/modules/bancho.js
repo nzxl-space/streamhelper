@@ -171,12 +171,6 @@ module.exports = class Bancho {
                 })
             );
 
-            await mongoDB.logs.insertOne({
-                type: "map",
-                beatmap_id: Number(map.mapData.id),
-                timestamp: Date.now()
-            });
-
             resolve(insertMap);
         });
     }
@@ -191,7 +185,7 @@ module.exports = class Bancho {
             const { mongoDB } = require("../app");
 
             let map = await mongoDB.mapData.findOne({ 
-                $or: [{ mapData: { $elemMatch: { id: Number(id) } }}, { mapData: { $elemMatch: { beatmapset_id: Number(id) } }}, { name: id }]
+                $or: [{ mapData: { $elemMatch: { id: id } }}, { mapData: { $elemMatch: { beatmapset_id: id } }}, { name: id }]
             });
             
             if(!map) {
@@ -299,8 +293,6 @@ module.exports = class Bancho {
                     let accuracy = Math.round(100 * (score.count50*50 + score.count100*100 + score.count300*300) / (score.count50*300 + score.count100*300 + score.count300*300) * 100) / 100;
                     let map = await this.getBeatmap(score.beatmapId);
 
-                    let o = (await this.banchoClient.getUserById(user.osu_id));
-
                     await discord.sendMessage(
                         discord.buildEmbed(3, {
                             title: `${map.name}`,
@@ -329,18 +321,14 @@ module.exports = class Bancho {
                         })
                     );
 
-                    let twitchUsername = await twitch.getUsername(user.twitch_id);
-                    if(twitchUsername && twitch.twitchClient.getChannels().includes(`#${twitchUsername}`) && !user["silenced"]) {
-                        twitch.twitchClient.say(`#${twitchUsername}`, `New top play recorded! You can watch it here: ${url} 🤙`);
-                    } else {
-                        o.sendMessage(`[REPLAY] × New top play recorded! You can watch it here: ${url} =)`);
-                    }
+                    let cache = discord.cache[`${user.twitch_id}`];
+                    if(!cache) return;
 
-                    await mongoDB.logs.insertOne({
-                        type: "replay",
-                        replay: url,
-                        timestamp: Date.now()
-                    });
+                    if(twitch.twitchClient.getChannels().includes(`#${cache.twitch}`) && !user["silenced"]) {
+                        twitch.twitchClient.say(`#${cache.twitch}`, `New top play recorded! You can watch it here: ${url} 🤙`);
+                    } else {
+                        this.banchoClient.getUser(cache.osu.ircUsername).sendMessage(`[REPLAY] × New top play recorded! You can watch it here: ${url} =)`);
+                    }
                 });
 
                 return resolve();

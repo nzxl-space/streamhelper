@@ -12,6 +12,7 @@ module.exports = class Discord {
         this.discordClient = null;
         this.currentlyPlaying = {};
         this.lastChecked = {};
+        this.cache = {};
     }
 
     connect() {
@@ -97,46 +98,44 @@ module.exports = class Discord {
                     }
                 }
 
-                let o = (await bancho.banchoClient.getUserById(user.osu_id));
-                if(!o) return;
+                if(!this.cache[`${user.twitch_id}`] || moment(Date.now()).diff(this.cache[`${user.twitch_id}`].refresh, "minutes") >= 60) {
+                    this.cache[`${user.twitch_id}`] = {
+                        osu: (await bancho.banchoClient.getUserById(user.osu_id)),
+                        osu_id: user.osu_id,
+                        twitch: await twitch.getUsername(user.twitch_id),
+                        twitch_id: user.twitch_id,
+                        refresh: Date.now()
+                    }
+                }
 
-                let twitchUsername = await twitch.getUsername(user.twitch_id);
-                if(!twitchUsername) return;
+                let cache = this.cache[`${user.twitch_id}`];
 
-                let isJoined = twitch.twitchClient.getChannels().includes(`#${twitchUsername}`);
+                let isJoined = twitch.twitchClient.getChannels().includes(`#${cache.twitch}`);
                 let diff = moment(Date.now()).diff(this.lastChecked[`${user.twitch_id}`], "minutes");
 
-                if(!this.lastChecked[`${user.twitch_id}`] || Number(diff) && diff >= 3) {
+                if(!this.lastChecked[`${user.twitch_id}`] || Number(diff) && diff >= 8) {
                     this.lastChecked[`${user.twitch_id}`] = Date.now();
 
                     let live = await twitch.isLive(user.twitch_id);
 
                     if(!isJoined && live) {
-                        twitch.twitchClient.join(`#${twitchUsername}`);
+                        twitch.twitchClient.join(`#${cache.twitch}`);
 
                         delete this.currentlyPlaying[`${user.twitch_id}`]; // delete if it exists lol it may contain outdated data
 
                         await this.sendMessage(
                             this.buildEmbed(1, {
-                                title: `Listening for requests on ${twitchUsername}!`,
-                                description: `${o.ircUsername}`,
-                                url: `https://twitch.tv/${twitchUsername}`,
+                                title: `Listening for requests on ${cache.twitch}!`,
+                                description: `${cache.osu.ircUsername}`,
+                                url: `https://twitch.tv/${cache.twitch}`,
                                 fields: [],
-                                action: `𝗕𝗢𝗧 𝗝𝗢𝗜𝗡𝗘𝗗 𝗖𝗛𝗔𝗡𝗡𝗘𝗟 » ${twitchUsername}`,
+                                action: `𝗕𝗢𝗧 𝗝𝗢𝗜𝗡𝗘𝗗 𝗖𝗛𝗔𝗡𝗡𝗘𝗟 » ${cache.twitch}`,
                                 footer: "beatmap_requests_enabled",
-                                image: `https://static-cdn.jtvnw.net/previews-ttv/live_user_${twitchUsername}-440x248.jpg`
+                                image: `https://static-cdn.jtvnw.net/previews-ttv/live_user_${cache.twitch}-440x248.jpg`
                             })
                         );
-
-                        await mongoDB.logs.insertOne({
-                            type: "live",
-                            user_id: Number(user.id),
-                            timestamp: Date.now(),
-                            channel: Number(user.twitch_id)
-                        });
-                        
                     } else if(isJoined && !live) {
-                        twitch.twitchClient.part(`#${twitchUsername}`);
+                        twitch.twitchClient.part(`#${cache.twitch}`);
                     }
                 }
 
@@ -161,13 +160,6 @@ module.exports = class Discord {
                         },
                         previousMap: this.currentlyPlaying[`${user.twitch_id}`]
                     }
-
-                    await mongoDB.logs.insertOne({
-                        type: "presence",
-                        user_id: Number(user.id),
-                        timestamp: Date.now(),
-                        channel: Number(user.twitch_id)
-                    });
                 }
             });
 
@@ -199,10 +191,11 @@ module.exports = class Discord {
             mongoDB.users.findOne({ id: user }).then(async (result) => {
                 if(!result || result.length <= 0) return;
                 
-                if(result["twitch"]) {
-                    let twitchUsername = await twitch.getUsername(result.twitch_id);
-                    if(twitch.twitchClient.getChannels().includes(`#${twitchUsername}`))
-                        twitch.twitchClient.part(`#${twitchUsername}`);
+                if(result["twitch_id"] && this.cache[`${result.twitch_id}`]) {
+                    let cache = this.cache[`${result.twitch_id}`];
+
+                    if(twitch.twitchClient.getChannels().includes(`#${cache.twitch}`))
+                        twitch.twitchClient.part(`#${cache.twitch}`);
                 }
 
                 await mongoDB.users.deleteOne({ id: result.id });

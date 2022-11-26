@@ -94,13 +94,6 @@ module.exports = class Express {
                 await discord.updateRole(user.id, "on hold");
     
                 console.log(`${user.username}#${user.discriminator} has been registered to the service!`);
-
-                await mongoDB.logs.insertOne({
-                    type: "registration",
-                    user_id: Number(user.id),
-                    timestamp: Date.now(),
-                    channel: Number(user.twitch_id)
-                });
     
                 return res.send(`<script>window.close()</script>`);
             });
