@@ -32,7 +32,7 @@ function connect() {
                 if(c.storage.block.includes(tags["username"])) return;
 
                 let map = await c.funcs.bancho.getBeatmap(beatmapId && beatmapId.length >= 1 ? Number(beatmapId[0]) : Number(setId[0])).catch((err) => {
-                    return console.log(`${err}`);
+                    return; //console.log(`${err}`)
                 });
 
                 let user = await c.database.users.findOne({ twitch_id: Number(cache.twitch_id)});
@@ -42,7 +42,7 @@ function connect() {
                 if(user["blacklist"] && user["blacklist"].includes(tags["username"])) return;
 
                 let data = {
-                    mapName: `[https://osu.ppy.sh/b/${map.id} ${map.name}]`,
+                    mapName: `[https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}]`,
                     mods: `${beatmapMods ? `+${beatmapMods.toString().toUpperCase()}` : ""}`,
                     stats: `★ ${map.stars}, AR ${map.stats.ar}, BPM ${map.stats.bpm} - ${c.lib.moment(map.stats.length*1000).format("mm:ss")}`,
                     status: `${map.status[0].toUpperCase()}${map.status.slice(1)}`
