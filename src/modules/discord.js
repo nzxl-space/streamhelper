@@ -81,6 +81,8 @@ function connect() {
                 }
             }
 
+            if(!user.osu_id) return;
+
             if(!c.storage.user.cache[`${user.twitch_id}`] || c.lib.moment(Date.now()).diff(c.storage.user.cache[`${user.twitch_id}`].refresh, "minutes") >= 60) {
                 c.storage.user.cache[`${user.twitch_id}`] = {
                     osu: (await c.client.bancho.getUserById(user.osu_id)),

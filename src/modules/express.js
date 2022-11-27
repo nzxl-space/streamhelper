@@ -39,10 +39,6 @@ function createServer() {
             if(twitchLink.length <= 0)
                 return res.send(`<a href="#" onclick="window.close()">NO LINKED TWITCH CHANNEL FOUND; TRY AGAIN!</a>`);
 
-            let twitchId = c.funcs.twitch.getId(twitchLink[0].name);
-            if(!twitchId)
-                return res.send(`<a href="#" onclick="window.close()">NO LINKED TWITCH CHANNEL FOUND; TRY AGAIN!</a>`); 
-
             let guild = c.client.discord.guilds.cache.get(process.env.DISCORD_GUILD);
             if(!guild)
                 return res.send(`<a href="#" onclick="window.close()">AUTHORIZATION FAILED; TRY AGAIN!</a>`);
@@ -61,7 +57,7 @@ function createServer() {
             await c.database.users.insertOne({
                 id: Number(discordUser.id),
                 identifier: `${discordUser.username}#${discordUser.discriminator}`,
-                twitch_id: Number(twitchId),
+                twitch_id: Number(twitchLink[0].id),
                 osu_id: null,
                 silenced: false,
                 silencedReq: false,
