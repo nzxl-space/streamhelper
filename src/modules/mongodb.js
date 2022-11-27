@@ -1,30 +1,18 @@
-const { MongoClient } = require("mongodb");
+const c = require("../constants");
 
-module.exports = class MongoDB {
-    constructor(string, options) {
-        this.string = string;
-        this.options = options;
+function connect() {
+    return new Promise((resolve, reject) => {
+        c.client.mongo.connect(async (err) => {
+            if(err)
+                return reject("MongoDB connection failed!");
+    
+            const db = c.client.mongo.db("osu");
+            c.database.users = db.collection("users");
+            c.database.maps = db.collection("maps");
+            c.database.userCount = await c.database.users.distinct("id");
 
-        // export vars
-        this.users = null;
-        this.mapData = null;
-        this.logs = null;
-        this.activeUsers = null;
-    }
-
-    connect() {
-        return new Promise((resolve, reject) => {
-            let mongoClient = new MongoClient(this.string, this.options);
-            mongoClient.connect(async (err) => {
-                if(err) return reject();
-                const db = mongoClient.db("osu");
-
-                this.users = db.collection("users");
-                this.mapData = db.collection("map_data");
-                this.activeUsers = await this.users.distinct("id");
-
-                resolve();
-            });
+            resolve("MongoDB connected!");
         });
-    }
+    });
 }
+exports.connect = connect;

@@ -1,104 +1,84 @@
-const path = require("path");
+const c = require("../constants");
 
-const DiscordOauth2 = require("discord-oauth2");
-const oauth = new DiscordOauth2();
-
-const express = require("express");
-const { createServer } = require("http");
-
-const app = express();
-app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "..", "static"));
-app.use(express.static(path.join(__dirname, "..", "static")));
-
-const httpServer = createServer(app);
-
-module.exports = class Express {
-    constructor(port, clientId, clientSecret, redirectURI, token, guild) {
-        this.port = port;
-        this.clientId = clientId;
-        this.clientSecret = clientSecret;
-        this.redirectURI = redirectURI;
-        this.token = token;
-        this.guild = guild;
-
-        this.authorizeURL = `https://discord.com/api/oauth2/authorize?client_id=${this.clientId}&redirect_uri=${this.redirectURI}&response_type=code&scope=identify%20connections%20guilds.join`;
-    }
-
-    createServer() {
-        return new Promise((resolve) => {
-            app.get("/", (req, res) => res.render("index", { discordURL: this.authorizeURL }));
-
-            app.get("/discord", async (req, res) => {
-                const { mongoDB, discord, twitch } = require("../app");
-                if(!req.query.code) return res.send(`<script>window.close()</script>`);
-    
-                let token = await oauth.tokenRequest(
-                    {
-                        clientId: this.clientId,
-                        clientSecret: this.clientSecret,
-                        code: req.query.code,
-                        scope: "identify guilds",
-                        grantType: "authorization_code",
-                        redirectUri: this.redirectURI
-                    }
-                ).catch(err => { return console.log(`Discord API seems to be down ${err}`) });
-                if(!token || !token["access_token"]) return res.send(`<a href="#" onclick="window.close()">AUTHORIZATION FAILED; TRY AGAIN!</a>`);
-    
-                let user = await oauth.getUser(token.access_token);
-    
-                let exists = await mongoDB.users.findOne({ id: Number(user.id) });
-                if(exists) return res.send(`<script>window.close()</script>`);
-    
-                let conns = await oauth.getUserConnections(token.access_token);
-    
-                let twitchUser = conns.filter(x => x.type == "twitch");
-                if(twitchUser.length <= 0) {
-                    return res.send(`<a href="#" onclick="window.close()">NO LINKED TWITCH CHANNEL FOUND; TRY AGAIN!</a>`);
-                }
-
-                let twitchId = await twitch.getId(twitchUser[0].name);
-                if(twitchId == null) {
-                    return res.send(`<a href="#" onclick="window.close()">NO LINKED TWITCH CHANNEL FOUND; TRY AGAIN!</a>`); 
-                }
-    
-                let guild = discord.discordClient.guilds.cache.get(this.guild);
-                let guildMember = guild.members.cache.get(user.id);
-    
-                if(!guildMember) {
-                    await oauth.addMember(
-                        {
-                            accessToken: token.access_token,
-                            botToken: this.token,
-                            guildId: this.guild,
-                            userId: user.id
-                        }
-                    );
-                }
-    
-                await mongoDB.users.insertOne(
-                    {
-                        id: Number(user.id),
-                        identifier: `${user.username}#${user.discriminator}`,
-                        twitch_id: Number(twitchId),
-                        osu_id: null,
-                        silenced: false,
-                        silencedReq: false,
-                        blacklist: [],
-                        replays: [],
-                        activityRetryCount: 0
-                    }
-                );
-    
-                mongoDB.activeUsers.push(user.id);
-                await discord.updateRole(user.id, "on hold");
-    
-                console.log(`${user.username}#${user.discriminator} has been registered to the service!`);
-    
-                return res.send(`<script>window.close()</script>`);
-            });
-    
-            httpServer.listen(this.port, () => resolve());
+function createServer() {
+    return new Promise((resolve) => {
+        c.webserver.app.get("/", (req, res) => {
+            res.render("index", { discordURL: c.storage.discordURL });
         });
-    }
+
+        c.webserver.app.get("/discord", async (req, res) => {
+            let code = req.query.code;
+            if(!code)
+                return res.send(`<script>window.close()</script>`);
+
+            let token = await c.client.discordApi.tokenRequest(
+                {
+                    clientId: process.env.DISCORD_PUBLIC,
+                    clientSecret: process.env.DISCORD_SECRET,
+                    code: code,
+                    scope: "identify guilds",
+                    grantType: "authorization_code",
+                    redirectUri: process.env.DISCORD_REDIRECT_URI
+                }
+            ).catch((err) => {
+                return console.log(`${err}`);
+            });
+
+            if(!token || !token.access_token)
+                return res.send(`<a href="#" onclick="window.close()">AUTHORIZATION FAILED; TRY AGAIN!</a>`);
+
+            let discordUser = await c.client.discordApi.getUser(token.access_token);
+
+            let lookupUser = await c.database.users.findOne({ id: Number(discordUser.id) });
+            if(lookupUser)
+                return res.send(`<script>window.close()</script>`);
+
+            let profileLinks = await c.client.discordApi.getUserConnections(token.access_token);
+
+            let twitchLink = profileLinks.filter(x => x.type == "twitch");
+            if(twitchLink.length <= 0)
+                return res.send(`<a href="#" onclick="window.close()">NO LINKED TWITCH CHANNEL FOUND; TRY AGAIN!</a>`);
+
+            let twitchId = c.funcs.twitch.getId(twitchLink[0].name);
+            if(!twitchId)
+                return res.send(`<a href="#" onclick="window.close()">NO LINKED TWITCH CHANNEL FOUND; TRY AGAIN!</a>`); 
+
+            let guild = c.client.discord.guilds.cache.get(process.env.DISCORD_GUILD);
+            if(!guild)
+                return res.send(`<a href="#" onclick="window.close()">AUTHORIZATION FAILED; TRY AGAIN!</a>`);
+
+            let guildMember = guild.members.cache.get(discordUser.id);
+            if(!guildMember)
+                await c.client.discordApi.addMember({
+                    accessToken: token.access_token,
+                    botToken: process.env.DISCORD_TOKEN,
+                    guildId: process.env.DISCORD_GUILD,
+                    userId: discordUser.id
+                }).catch(() => {
+                    return res.send(`<a href="#" onclick="window.close()">AUTHORIZATION FAILED; YOU MAY HAVE ALREADY REACHED THE 100-SERVER LIMIT!; TRY AGAIN!</a>`);
+                });
+
+            await c.database.users.insertOne({
+                id: Number(discordUser.id),
+                identifier: `${discordUser.username}#${discordUser.discriminator}`,
+                twitch_id: Number(twitchId),
+                osu_id: null,
+                silenced: false,
+                silencedReq: false,
+                blacklist: [],
+                replays: [],
+                activityRetryCount: 0
+            });
+
+            c.database.userCount.push(discordUser.id);
+            await c.funcs.discord.updateRole(discordUser.id, "on hold");
+
+            console.log(`${discordUser.username}#${discordUser.discriminator} has been registered to the service!`);
+
+            res.send(`<a href="#" onclick="window.close()">SUCCESSFULLY REGISTERED! YOU MAY CLOSE THIS WINDOW NOW :)</a>`);
+        });
+
+        c.webserver.httpServer.listen(process.env.PORT || 2048, () => resolve(`HTTP Server listening on ${process.env.PORT || 2048}!`));
+    });
 }
+exports.createServer = createServer;
