@@ -131,7 +131,7 @@ function connect() {
 
             if(!c.storage.user.currentlyPlaying[`${user.twitch_id}`] || c.storage.user.currentlyPlaying[`${user.twitch_id}`] && c.storage.user.currentlyPlaying[`${user.twitch_id}`].name != mapName) {
 
-                let map = await c.funcs.bancho.getBeatmap(mapName);
+                let map = await c.funcs.bancho.getBeatmap(mapName).catch(() => { return console.log(`Map ${mapName} not found`) });
 
                 c.storage.user.currentlyPlaying[`${user.twitch_id}`] = {
                     currentMap: map,

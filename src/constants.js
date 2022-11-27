@@ -36,8 +36,8 @@ const { createServer } = require("http");
 
 const app = express();
 app.set("view engine", "ejs");
-app.set("views", require("path").join(__dirname, "..", "static"));
-app.use(express.static(require("path").join(__dirname, "..", "static")));
+app.set("views", require("path").join(__dirname, "static"));
+app.use(express.static(require("path").join(__dirname, "static")));
 
 const httpServer = createServer(app);
 

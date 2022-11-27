@@ -127,7 +127,7 @@ function getScores(username) {
                 await c.database.users.updateOne({ id: Number(user.id) }, { $set: { [`replays.${score.beatmapId}`]: `${url}` }});
 
                 let accuracy = Math.round(100 * (score.count50*50 + score.count100*100 + score.count300*300) / (score.count50*300 + score.count100*300 + score.count300*300) * 100) / 100;
-                let map = await getBeatmap(score.beatmapId);
+                let map = await getBeatmap(score.beatmapId).catch(() => { return console.log(`Map ${score.beatmapId} not found`) });
 
                 await c.funcs.discord.sendMessage(
                     c.funcs.discord.buildEmbed(3, {
@@ -300,7 +300,7 @@ function getBeatmap(map) {
                             X: Math.round(pp.performance[2].totalPerformance)
                         }
                     }
-                });
+                }).catch(() => { return console.log(`Map ${map} not found`) });
             } else if(Number(map)) {
                 c.client.bancho.osuApi.beatmaps.getBySetId(map).then(async (m) => {
                     let beatmap = m.length >= 1 ? m[0] : null;

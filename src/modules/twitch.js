@@ -31,8 +31,8 @@ function connect() {
             if(beatmapId || setId) {
                 if(c.storage.block.includes(tags["username"])) return;
 
-                let map = await c.funcs.bancho.getBeatmap(beatmapId && beatmapId.length >= 1 ? Number(beatmapId[0]) : Number(setId[0])).catch((err) => {
-                    return; //console.log(`${err}`)
+                let map = await c.funcs.bancho.getBeatmap(beatmapId && beatmapId.length >= 1 ? Number(beatmapId[0]) : Number(setId[0])).catch(() => {
+                    return console.log(`Failed to get beatmap ${beatmapId && beatmapId.length >= 1 ? Number(beatmapId[0]) : Number(setId[0])}`);
                 });
 
                 let user = await c.database.users.findOne({ twitch_id: Number(cache.twitch_id)});
