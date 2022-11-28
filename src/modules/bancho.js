@@ -238,7 +238,7 @@ function getBeatmap(map) {
             if(typeof map == "string") {
                 await OAuth2();
 
-                c.lib.fetch(`https://osu.ppy.sh/api/v2/beatmapsets/search?m=0&q=${map.trim()}&s=any`, {
+                c.lib.fetch(`https://osu.ppy.sh/api/v2/beatmapsets/search?nsfw=true&m=0&q=${map.trim()}&s=any`, {
                     method: "GET",
                     headers: {
                         "Authorization": `Bearer ${c.storage.tokens.osu["token"]}`,
