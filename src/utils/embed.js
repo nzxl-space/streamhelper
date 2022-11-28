@@ -14,7 +14,7 @@ const embeds = [
             { name: "Requirements", value: "✅ Active Discord Game Activity\n✅ Linked Twitch Account to Discord\n❌ Streamer mode is not needed" },
             { name: "How It Works", value: "👉 The bot utilises Discord's Rich Presence feature to obtain beatmap data and looks at your Twitch account link to determine the correct twitch channel." },
             { name: "How To Disable", value: "👉 By leaving this server, the bot will automatically be disabled." },
-            { name: "Bot doesn't work!! Pls Fix", value: "The bot will **only join** your twitch channel **if** you are **LIVE** and **streaming in the osu! category**.\nIf you've **changed** your **twitch name** or **osu! username**, you will need to **leave** this server and **re-authorize the access**.\n(*Make sure you've also updated your Twitch connection on your Discord profile.*)" },
+            { name: "Bot doesn't work!! Pls Fix", value: "The bot will **only join** your twitch channel **if** you are **LIVE** and **streaming in the osu! category**." },
             { name: "Links", value: "Registration: https://osu.nzxl.space/\nReddit: https://redd.it/ysu6bh\nGitHub Repository: https://github.com/nzxl-space/streamhelper" }
         ],
         files: ["src/static/assets/vids/presence.webm", "src/static/assets/vids/twitch.webm"],
@@ -70,6 +70,10 @@ client.on("ready", async () => {
             ],
             files: embed.files
         });
+
+        if((i+1) >= sortedByPriority.length) {
+            process.exit();
+        }
     }
 });
 

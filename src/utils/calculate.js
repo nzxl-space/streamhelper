@@ -49,7 +49,7 @@ const modsEnum = {
 
 mongoClient.connect(async err => {
     if(err) return console.log("MongoDB failed!");
-    const mapData = mongoClient.db("osu").collection("map_data");
+    const mapData = mongoClient.db("osu").collection("maps");
     console.log("MongoDB connected!");
 
     // await banchoClient.connect().then(console.log("Bancho connected!"));
@@ -64,17 +64,14 @@ mongoClient.connect(async err => {
     let i = 0;
     for (i = 0; i < data["scores"].length; i++) {
         let score = data.scores[i];
-        let beatmap;
 
-        let map = await mapData.findOne({ "mapData.id": score.beatmapId });
+        let map = await mapData.findOne({ beatmap_id: score.beatmapId });
         if(map == null) continue;
 
-        beatmap = map.mapData;
-
         data["performance"].push(Math.round(score.pp));
-        data["genre"].push(Number(beatmap.genre) ? beatmap.genre : 0);
-        data["bpm"].push(beatmap.bpm);
-        data["stars"].push(beatmap.difficulty_rating);
+        data["genre"].push(Number(map.genre) ? map.genre : 0);
+        data["bpm"].push(map.stats.bpm);
+        data["stars"].push(map.stars);
         
         console.log(score.scoreId, `DONE (${(i+1)}/${data["scores"].length})`);
     }
@@ -95,14 +92,14 @@ mongoClient.connect(async err => {
         { 
             $and: 
             [
-                { "ppData.A": { $gt: Math.round(performance*0.75) }},
-                { "ppData.X": { $lt: Math.round(performance*1.75) }},
-                { "mapData.bpm": { $gt: Math.round(bpm-20) }},
-                { "mapData.bpm": { $lt: Math.round(bpm+10) }},
-                { "mapData.genre": (Object.values(genreEnum).map(v => v).indexOf(genre)+1) },
-                { "mapData.difficulty_rating": { $gt: sr }},
-                { "mapData.difficulty_rating": { $lt: (sr+0.5) }},
-                { "mapData.status": "ranked" }
+                { "pp.A": { $gt: Math.round(performance*0.75) }},
+                { "pp.X": { $lt: Math.round(performance*1.75) }},
+                { "stats.bpm": { $gt: Math.round(bpm-20) }},
+                { "stats.bpm": { $lt: Math.round(bpm+10) }},
+                { "genre": (Object.values(genreEnum).map(v => v).indexOf(genre)+1) },
+                { "stars": { $gt: sr }},
+                { "stars": { $lt: (sr+0.5) }},
+                { "status": "ranked" }
             ]
         }
     ).toArray();
@@ -112,15 +109,15 @@ mongoClient.connect(async err => {
         if(found.length == lookup.length) break;
 
         let r = lookup[Math.floor((Math.random()*lookup.length))];
-        if(found.filter(map => map.id == r.mapData.id).length >= 1) continue;
+        if(found.filter(map => map.beatmap_id == r.beatmap_id).length >= 1) continue;
 
         found.push({
-            id: r.mapData.id,
-            name: `[https://osu.ppy.sh/b/${r.mapData.id} ${r.name}]`,
-            mapper: r.mapData.creator,
-            pp: `~${Math.floor((r.ppData.A+r.ppData.S+r.ppData.X)/3)}pp`,
-            status: `${r.mapData.status[0].toUpperCase()}${r.mapData.status.slice(1)}`,
-            stats: `★ ${Math.round(r.mapData.difficulty_rating * 100) / 100}, AR ${r.mapData.ar}, BPM ${r.mapData.bpm} - ${moment(r.mapData.total_length*1000).format("mm:ss")}`,
+            id: r.beatmap_id,
+            name: `[https://osu.ppy.sh/b/${r.beatmap_id} ${r.name}]`,
+            mapper: r.creator,
+            pp: `~${Math.floor((r.pp.A+r.pp.S+r.pp.X)/3)}pp`,
+            status: `${r.status[0].toUpperCase()}${r.status.slice(1)}`,
+            stats: `★ ${r.stars}, AR ${r.stats.ar}, BPM ${r.stats.bpm} - ${moment(r.stats.length*1000).format("mm:ss")}`,
         });
     }
 

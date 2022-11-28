@@ -4,7 +4,7 @@ const mongoClient = new MongoClient(process.env.MONGODB, { useNewUrlParser: true
 
 const fs = require("fs");
 const path = require("path");
-const cacheDir = path.join(__dirname, "..", "cache");
+const cacheDir = path.join(__dirname, "maps");
 
 const { Downloader, DownloadEntry, DownloadType } = require("osu-downloader");
 const downloader = new Downloader({
@@ -16,13 +16,13 @@ const downloader = new Downloader({
 mongoClient.connect(async err => {
     if(err) return console.log("MongoDB failed!");
 
-    const mapData = mongoClient.db("osu").collection("map_data");
+    const mapData = mongoClient.db("osu").collection("maps");
 
     console.log("MongoDB connected!");
 
     let toDownload = [];
     let existing = fs.readdirSync(cacheDir);
-    let maps = await mapData.distinct("setId");
+    let maps = await mapData.distinct("beatmapset_id");
 
     maps = maps.filter(x => !existing.includes(`${x}.osz`));
 
