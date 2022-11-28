@@ -220,7 +220,7 @@ function getBeatmap(map) {
             $or: [
                 { beatmap_id: map },
                 { beatmapset_id: map },
-                { name: map.trim() }
+                { name: String(map).trim() }
             ]
         }).toArray();
 
