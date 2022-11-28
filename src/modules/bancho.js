@@ -127,7 +127,7 @@ function getScores(username) {
                 await c.database.users.updateOne({ id: Number(user.id) }, { $set: { [`replays.${score.beatmapId}`]: `${url}` }});
 
                 let accuracy = Math.round(100 * (score.count50*50 + score.count100*100 + score.count300*300) / (score.count50*300 + score.count100*300 + score.count300*300) * 100) / 100;
-                let map = await getBeatmap(score.beatmapId).catch(() => { return console.log(`Map ${score.beatmapId} not found`) });
+                let map = await getBeatmap(score.beatmapId);
 
                 await c.funcs.discord.sendMessage(
                     c.funcs.discord.buildEmbed(3, {
@@ -220,7 +220,7 @@ function getBeatmap(map) {
             $or: [
                 { beatmap_id: map },
                 { beatmapset_id: map },
-                { name: map }
+                { name: map.trim() }
             ]
         }).toArray();
 
@@ -238,7 +238,7 @@ function getBeatmap(map) {
             if(typeof map == "string") {
                 await OAuth2();
 
-                c.lib.fetch(`https://osu.ppy.sh/api/v2/beatmapsets/search?m=0&q=${map}&s=any`, {
+                c.lib.fetch(`https://osu.ppy.sh/api/v2/beatmapsets/search?m=0&q=${map.trim()}&s=any`, {
                     method: "GET",
                     headers: {
                         "Authorization": `Bearer ${c.storage.tokens.osu["token"]}`,
@@ -252,20 +252,19 @@ function getBeatmap(map) {
     
                     let artist = map.match(/^(.*?)\s-\s(.*?)$/);
                     let version = map.match(/(?!.*\[)(?<=\[).+?(?=\])/);
-                    if(!artist || !version) return reject("Invalid map string format");
+                    if(!artist || !version) return reject(`Invalid map string format (${map})`);
+
+                    let searchResults = result.beatmapsets.filter(b => b.artist.toLowerCase() == artist[1].toLowerCase());
+                    if(!searchResults || searchResults.length <= 0) return reject(`No map results found (${map})`);
     
-                    let searchResults = result.beatmapsets.filter(b => b.artist == artist[1]);
-                    if(!searchResults || searchResults.length <= 0) return reject("No map results found");
+                    let set = searchResults.filter(b => b.beatmaps.filter(x => x.version.toLowerCase() == version[0].toLowerCase()).length >= 1);
+                    if(!set || set.length <= 0) return reject(`No map results found (${map})`);
     
-                    let set = searchResults.filter(b => b.beatmaps.filter(x => x.version == version[0]).length >= 1);
-                    if(!set || set.length <= 0) return reject("No map results found");
-    
-                    let beatmap = set[0].beatmaps.filter(b => b.version == version[0]);
-                    if(!beatmap || beatmap.length <= 0) return reject("No map results found");
+                    let beatmap = set[0].beatmaps.filter(b => b.version.toLowerCase() == version[0].toLowerCase());
+                    if(!beatmap || beatmap.length <= 0) return reject(`No map results found (${map})`);
     
                     let beatmapFromApi = await c.client.bancho.osuApi.beatmaps.getByBeatmapId(beatmap[0].id);
-                    if(beatmapFromApi.length <= 0) 
-                        return reject("No map found");
+                    if(beatmapFromApi.length <= 0) return reject(`No map results found (${map})`);
 
                     let pp = await c.client.calculator.calculate({
                         beatmapId: beatmapFromApi[0].id
@@ -300,7 +299,7 @@ function getBeatmap(map) {
                             X: Math.round(pp.performance[2].totalPerformance)
                         }
                     }
-                }).catch(() => { return console.log(`Map ${map} not found`) });
+                }).catch(console.log);
             } else if(Number(map)) {
                 c.client.bancho.osuApi.beatmaps.getBySetId(map).then(async (m) => {
                     let beatmap = m.length >= 1 ? m[0] : null;
