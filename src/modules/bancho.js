@@ -215,12 +215,13 @@ function OAuth2() {
  */
 function getBeatmap(map) {
     return new Promise(async (resolve, reject) => {
+        let running = true;
         let foundMap = {};
         let lookupMap = await c.database.maps.find({
             $or: [
                 { beatmap_id: map },
                 { beatmapset_id: map },
-                { name: String(map).trim() }
+                { name: String(map).trim() } // Might be good to split the string into artist, title and version to search for similar songs if not found
             ]
         }).toArray();
 
@@ -252,23 +253,39 @@ function getBeatmap(map) {
     
                     let artist = map.match(/^(.*?)\s-\s(.*?)$/);
                     let version = map.match(/(?!.*\[)(?<=\[).+?(?=\])/);
-                    if(!artist || !version) return reject(`Invalid map string format (${map})`);
+                    if(!artist || !version) {
+                        running = false;
+                        return reject(`Invalid map string format (${map})`);
+                    }
 
                     let searchResults = result.beatmapsets.filter(b => b.artist.toLowerCase() == artist[1].toLowerCase());
-                    if(!searchResults || searchResults.length <= 0) return reject(`No map results found (${map})`);
+                    if(!searchResults || searchResults.length <= 0) {
+                        running = false;
+                        return reject(`No map results found (${map})`);
+                    }
     
                     let set = searchResults.filter(b => b.beatmaps.filter(x => x.version.toLowerCase() == version[0].toLowerCase()).length >= 1);
-                    if(!set || set.length <= 0) return reject(`No map results found (${map})`);
+                    if(!set || set.length <= 0) {
+                        running = false;
+                        return reject(`No map results found (${map})`);
+                    }
     
                     let beatmap = set[0].beatmaps.filter(b => b.version.toLowerCase() == version[0].toLowerCase());
-                    if(!beatmap || beatmap.length <= 0) return reject(`No map results found (${map})`);
+                    if(!beatmap || beatmap.length <= 0) {
+                        running = false;
+                        return reject(`No map results found (${map})`);
+                    }
     
                     let beatmapFromApi = await c.client.bancho.osuApi.beatmaps.getByBeatmapId(beatmap[0].id);
-                    if(beatmapFromApi.length <= 0) return reject(`No map results found (${map})`);
+                    if(beatmapFromApi.length <= 0) {
+                        running = false;
+                        return reject(`No map results found (${map})`);
+                    }
 
                     let pp = await c.client.calculator.calculate({
                         beatmapId: beatmapFromApi[0].id
                     }).catch(() => {
+                        running = false;
                         return reject(`Failed to calculate performance for map ${beatmap.id}`);
                     });
 
@@ -306,7 +323,10 @@ function getBeatmap(map) {
 
                     if(m.length <= 0) {
                         m = await c.client.bancho.osuApi.beatmaps.getByBeatmapId(map);
-                        if(m.length <= 0) return reject("No map found");
+                        if(m.length <= 0) {
+                            running = false;
+                            return reject("No map found");
+                        }
 
                         beatmap = m[0];
                     }
@@ -314,6 +334,7 @@ function getBeatmap(map) {
                     let pp = await c.client.calculator.calculate({
                         beatmapId: beatmap.id
                     }).catch(() => {
+                        running = false;
                         return reject(`Failed to calculate performance for map ${beatmap.id}`);
                     });
 
@@ -347,9 +368,11 @@ function getBeatmap(map) {
                 });
             }
 
-            while(!foundMap["beatmap_id"]) {
-                await new Promise(p => setTimeout(p, 100));
+            while(!foundMap["beatmap_id"] && running) {
+                await new Promise(p => setTimeout(p, 25));
             }
+
+            if(!foundMap["beatmap_id"]) return reject("No map found");
 
             let dbLookup = await c.database.maps.findOne({ beatmap_id: foundMap.beatmap_id });
             if(!dbLookup || dbLookup.length <= 0) {
