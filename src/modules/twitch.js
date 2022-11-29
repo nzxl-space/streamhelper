@@ -93,8 +93,11 @@ function connect() {
                     if(args.length <= 0)
                         return c.client.twitch.reply(channel, `» Blacklisted users: ${user["blacklist"] && user["blacklist"].length >= 1 ? user["blacklist"].join(", ") : "None"}`, tags["id"]);
 
-                    let fixed = args[0].match(/[a-zA-Z0-9_]+/g, "").join("").trim().toLowerCase();
+                    let fixed = args[0].match(/[a-zA-Z0-9_]+/g);
+                    if(!fixed || fixed.length <= 0) return;
 
+                    fixed = fixed.join("").trim().toLowerCase();
+                    
                     if(user["blacklist"] && user["blacklist"].includes(fixed)) {
                         await c.database.users.updateOne({ id: Number(user.id) }, { $pull: { blacklist: fixed } });
                         return c.client.twitch.reply(channel, `» Specified user was removed from the blacklist`, tags["id"]);
