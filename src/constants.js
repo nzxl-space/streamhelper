@@ -90,6 +90,7 @@ exports.storage = {
         "-1": "wip",
         "0": "pending",
         "1": "ranked",
+        "2": "approved",
         "4": "loved",
         "3": "qualified"
     },
