@@ -67,8 +67,7 @@ exports.lib = {
         MessageEmbed: require("discord.js").MessageEmbed
     },
     path: require("path"),
-    clone: require("clone"),
-    fs: require("fs")
+    clone: require("clone")
 }
 
 exports.database = {
