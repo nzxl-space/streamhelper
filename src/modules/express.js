@@ -66,7 +66,7 @@ function createServer() {
                 activityRetryCount: 0
             });
 
-            c.database.userCount.push(discordUser.id);
+            c.database.userCount.push(Number(discordUser.id));
             await c.funcs.discord.updateRole(discordUser.id, "on hold");
 
             console.log(`${discordUser.username}#${discordUser.discriminator} has been registered to the service!`);

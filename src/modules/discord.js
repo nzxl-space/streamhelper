@@ -31,7 +31,7 @@ function connect() {
         });
 
         c.client.discord.on("guildMemberRemove", async (member) => {
-            await deleteUser(member.id);
+            await deleteUser(Number(member.id));
         });
 
         c.client.discord.on("presenceUpdate", async (_, presence) => {
@@ -44,7 +44,7 @@ function connect() {
 
             if(user.osu_id == null) {
                 if(user["activityRetryCount"] && user["activityRetryCount"] >= 20) {
-                    await deleteUser(presence.userId);
+                    await deleteUser(Number(presence.userId));
                     await updateRole(presence.userId, "on hold");
                     await sendMessage(
                         buildEmbed(2, {
