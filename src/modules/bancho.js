@@ -286,8 +286,12 @@ function getBeatmap(map) {
                         beatmapId: beatmapFromApi[0].id
                     }).catch(() => {
                         running = false;
-                        return reject(`Failed to calculate performance for map ${beatmap.id}`);
+                        return reject(`Failed to calculate performance for map ${beatmapFromApi[0].id}`);
                     });
+
+                    if(!pp["performance"] || pp["performance"].length <= 0) {
+                        return reject(`No valid performance values found for ${beatmapFromApi[0].id}`);
+                    }
 
                     foundMap = {
                         name: `${beatmapFromApi[0].artist} - ${beatmapFromApi[0].title} [${beatmapFromApi[0].version}]`,
@@ -337,6 +341,10 @@ function getBeatmap(map) {
                         running = false;
                         return reject(`Failed to calculate performance for map ${beatmap.id}`);
                     });
+
+                    if(!pp["performance"] || pp["performance"].length <= 0) {
+                        return reject(`No valid performance values found for ${beatmap.id}`);
+                    }
 
                     foundMap = {
                         name: `${beatmap.artist} - ${beatmap.title} [${beatmap.version}]`,
@@ -407,6 +415,16 @@ function getBeatmap(map) {
                 );
             }
         }
+
+        await c.funcs.log("SYSTEM", "get+beatmap", 
+            {
+                type: "get+beatmap",
+                beatmap_id: foundMap.beatmap_id,
+                beatmapset_id: foundMap.beatmapset_id,
+                name: foundMap.name,
+                timestamp: c.lib.moment(Date.now()).toISOString()
+            }
+        );
 
         resolve(foundMap);
     });

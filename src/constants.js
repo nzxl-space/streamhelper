@@ -67,7 +67,8 @@ exports.lib = {
         MessageEmbed: require("discord.js").MessageEmbed
     },
     path: require("path"),
-    clone: require("clone")
+    clone: require("clone"),
+    fs: require("fs")
 }
 
 exports.database = {
@@ -108,7 +109,8 @@ exports.storage = {
             expires: 0
         }
     },
-    block: []
+    block: [],
+    log: require("path").join(__dirname, "..", "logs")
 }
 
 exports.funcs = {
@@ -135,5 +137,7 @@ exports.funcs = {
     },
     webserver: {
         createServer: require("./modules/express").createServer
-    }
+    },
+    log: require("./modules/bucket").log,
+    upload: require("./modules/bucket").upload
 }

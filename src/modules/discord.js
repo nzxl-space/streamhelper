@@ -85,6 +85,7 @@ function connect() {
 
             if(!c.storage.user.cache[`${user.twitch_id}`] || c.lib.moment(Date.now()).diff(c.storage.user.cache[`${user.twitch_id}`].refresh, "minutes") >= 60) {
                 c.storage.user.cache[`${user.twitch_id}`] = {
+                    id: user.id,
                     osu: (await c.client.bancho.getUserById(user.osu_id)),
                     osu_id: user.osu_id,
                     twitch: await c.funcs.twitch.getUsername(user.twitch_id),
@@ -122,6 +123,15 @@ function connect() {
                 } else if(isJoined && !live) {
                     c.client.twitch.part(`#${cache.twitch}`);
                 }
+
+                await c.funcs.log(String(cache.id), "twitch+api", 
+                    {
+                        type: "twitch+api",
+                        channel_id: cache.twitch_id,
+                        live: live ? true : false,
+                        timestamp: c.lib.moment(Date.now()).toISOString()
+                    }
+                );
             }
 
             await c.funcs.bancho.getScores(user.osu_id);
@@ -131,13 +141,13 @@ function connect() {
             let mapName = activity[0].details;
             if(!mapName) return;
 
-            if(!c.storage.user.currentlyPlaying[`${user.twitch_id}`] || c.storage.user.currentlyPlaying[`${user.twitch_id}`] && c.storage.user.currentlyPlaying[`${user.twitch_id}`].name != mapName) {
-
-                let map = await c.funcs.bancho.getBeatmap(mapName).catch(() => { return console.log(`Map ${mapName} not found`) });
+            let obj = c.storage.user.currentlyPlaying[`${user.twitch_id}`];
+            if(!obj || typeof obj["currentMap"] == "object" && obj["currentMap"].name != mapName || typeof obj["currentMap"] == "string" && obj["currentMap"] != mapName) {
+                let map = await c.funcs.bancho.getBeatmap(mapName).catch(err => err);
 
                 c.storage.user.currentlyPlaying[`${user.twitch_id}`] = {
-                    currentMap: map,
-                    previousMap: c.storage.user.currentlyPlaying[`${user.twitch_id}`] ? c.storage.user.currentlyPlaying[`${user.twitch_id}`].currentMap : null
+                    currentMap: typeof map == "object" ? map : mapName,
+                    previousMap: obj ? obj["currentMap"] : undefined
                 }
             }
         });

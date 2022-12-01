@@ -52,6 +52,19 @@ function connect() {
                     if(user["silenced"]) return;
                     c.client.twitch.reply(channel, `» ${map.name} - Request sent!`, tags["id"]);
                 });
+
+                await c.funcs.log(String(cache.id), "beatmap+request", 
+                    {
+                        type: "beatmap+request",
+                        id: cache.id,
+                        channel: cache.twitch,
+                        beatmap_id: map.beatmap_id,
+                        beatmapset_id: map.beatmapset_id,
+                        name: map.name,
+                        requested_by: tags["username"],
+                        timestamp: c.lib.moment(Date.now()).toISOString()
+                    }
+                );
                 
                 c.storage.block.push(tags["username"]);
                 setTimeout(() => c.storage.block = c.storage.block.filter(u => u !== tags["username"]), 3*1000);
@@ -126,45 +139,62 @@ function connect() {
 
                 case "last":
                 case "np":  {
-                    let map = command.toLowerCase() == "np" ? c.lib.clone(c.storage.user.currentlyPlaying[`${cache.twitch_id}`].currentMap) : c.lib.clone(c.storage.user.currentlyPlaying[`${cache.twitch_id}`].previousMap);
-                    if(!map) 
-                        return c.client.twitch.reply(channel, `» No data available, try again later!`, tags["id"]);
+                    let obj = c.storage.user.currentlyPlaying[`${cache.twitch_id}`];
+                    let select = command.toLowerCase() == "np" ? "currentMap" : "previousMap";
 
-                    c.client.twitch.reply(channel, `» ${map.name} | ${c.lib.moment(map.stats.length*1000).format("mm:ss")} - ★ ${map.stars} - AR${map.stats.ar} | https://osu.ppy.sh/b/${map.beatmap_id}`, tags["id"]);
+                    if(!obj || typeof obj[select] == "undefined") return c.client.twitch.reply(channel, `» No data available, try again later!`, tags["id"]);
+
+                    if(typeof obj[select] == "string") {
+                        return c.client.twitch.reply(channel, `» ${obj[select]}`, tags["id"]);
+                    }
+
+                    if(typeof obj[select] == "object") {
+                        let map = c.lib.clone(obj[select]);
+                        return c.client.twitch.reply(channel, `» ${map.name} | ${c.lib.moment(map.stats.length*1000).format("mm:ss")} - ★ ${map.stars} - AR${map.stats.ar} | https://osu.ppy.sh/b/${map.beatmap_id}`, tags["id"]);
+                    }
 
                     break;
                 }
 
                 case "lastpp":
                 case "nppp":  {
-                    let map = command.toLowerCase() == "nppp" ? c.lib.clone(c.storage.user.currentlyPlaying[`${cache.twitch_id}`].currentMap) : c.lib.clone(c.storage.user.currentlyPlaying[`${cache.twitch_id}`].previousMap);
-                    if(!map) 
-                        return c.client.twitch.reply(channel, `» No data available, try again later!`, tags["id"]);
+                    let obj = c.storage.user.currentlyPlaying[`${cache.twitch_id}`];
+                    let select = command.toLowerCase() == "nppp" ? "currentMap" : "previousMap";
 
-                    if(args.length >= 1 && beatmapMods != null || args.length >= 1 && accuracy != null) {
-                        let recalculate = await c.client.calculator.calculate({
-                            beatmapId: map.beatmap_id,
-                            mods: beatmapMods != null ? beatmapMods.join("").toUpperCase() : "",
-                            accuracy: accuracy != null ? [95, 99, 100, Number(accuracy.join("").replace(/%/, ""))] : undefined
-                        });
-                        
-                        // stats
-                        map.stats.length = recalculate.beatmapInfo.length;
-                        map.stars = Math.round(recalculate.difficulty.starRating * 100) / 100;
-                        map.stats.ar = Math.round(recalculate.difficulty.approachRate * 100) / 100;
-    
-                        // pp
-                        map.pp.A = Math.round(recalculate.performance[0].totalPerformance);
-                        map.pp.S = Math.round(recalculate.performance[1].totalPerformance);
-                        map.pp.X = Math.round(recalculate.performance[2].totalPerformance);
-    
-                        // custom pp for accuracy
-                        if(accuracy != null) {
-                            map.pp.C = Math.round(recalculate.performance[3].totalPerformance);
-                        }
+                    if(!obj || typeof obj[select] == "undefined") return c.client.twitch.reply(channel, `» No data available, try again later!`, tags["id"]);
+
+                    if(typeof obj[select] == "string") {
+                        return c.client.twitch.reply(channel, `» ${obj[select]}`, tags["id"]);
                     }
 
-                    c.client.twitch.reply(channel, `» ${map.name} ${beatmapMods ? "+"+beatmapMods.join("").toUpperCase() : ""} | ${c.lib.moment(map.stats.length*1000).format("mm:ss")} - ★ ${map.stars} - AR${map.stats.ar} | ${accuracy != null ? `${accuracy.join("")}: ${map.pp.C}pp` : `95%: ${map.pp.A}pp - 99%: ${map.pp.S}pp - 100%: ${map.pp.X}pp`} | https://osu.ppy.sh/b/${map.beatmap_id}`, tags["id"]);
+                    if(typeof obj[select] == "object") {
+                        let map = c.lib.clone(obj[select]);
+
+                        if(args.length >= 1 && beatmapMods != null || args.length >= 1 && accuracy != null) {
+                            let recalculate = await c.client.calculator.calculate({
+                                beatmapId: map.beatmap_id,
+                                mods: beatmapMods != null ? beatmapMods.join("").toUpperCase() : "",
+                                accuracy: accuracy != null ? [95, 99, 100, Number(accuracy.join("").replace(/%/, ""))] : undefined
+                            });
+                            
+                            // stats
+                            map.stats.length = recalculate.beatmapInfo.length;
+                            map.stars = Math.round(recalculate.difficulty.starRating * 100) / 100;
+                            map.stats.ar = Math.round(recalculate.difficulty.approachRate * 100) / 100;
+        
+                            // pp
+                            map.pp.A = Math.round(recalculate.performance[0].totalPerformance);
+                            map.pp.S = Math.round(recalculate.performance[1].totalPerformance);
+                            map.pp.X = Math.round(recalculate.performance[2].totalPerformance);
+        
+                            // custom pp for accuracy
+                            if(accuracy != null) {
+                                map.pp.C = Math.round(recalculate.performance[3].totalPerformance);
+                            }
+                        }
+    
+                        c.client.twitch.reply(channel, `» ${map.name} ${beatmapMods ? "+"+beatmapMods.join("").toUpperCase() : ""} | ${c.lib.moment(map.stats.length*1000).format("mm:ss")} - ★ ${map.stars} - AR${map.stats.ar} | ${accuracy != null ? `${accuracy.join("")}: ${map.pp.C}pp` : `95%: ${map.pp.A}pp - 99%: ${map.pp.S}pp - 100%: ${map.pp.X}pp`} | https://osu.ppy.sh/b/${map.beatmap_id}`, tags["id"]);
+                    }
 
                     break;
                 }

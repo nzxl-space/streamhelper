@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@kionell/osu-pp-calculator": "^3.1.0",
+    "aws-sdk": "^2.1265.0",
     "bancho.js": "github:nzxl101/bancho.js#streamhelper",
     "clone": "^2.1.2",
     "discord-oauth2": "^2.10.0",

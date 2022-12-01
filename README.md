@@ -90,6 +90,10 @@ MONGODB="<mongodb connection string>"
 OSURENDER="<o!rdr api key>"
 
 DOWNLOADURL="<replay download server>"
+
+AWS_ACCESS_KEY_ID="<filebase access key>"
+AWS_SECRET_ACCESS_KEY="<file base secret key>"
+S3="<bucket name>"
 ```
 
 <b>Running the bot</b>
