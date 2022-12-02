@@ -8,7 +8,7 @@ const c = require("./constants");
 (async () => {
     setInterval(() => {
         c.funcs.upload(c.storage.log, process.env.S3);
-    }, 45*60*1000) // sync files every 45 minutes
+    }, 3*60*60*1000) // sync files every 3 hours
 
     await c.funcs.mongo.connect().then(console.log);
     await c.funcs.bancho.connect().then(console.log);
