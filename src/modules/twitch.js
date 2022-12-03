@@ -19,9 +19,13 @@ function connect() {
         c.client.twitch.on("message", async (channel, tags, message, self) => {
             if(self) return;
 
-            // eslint-disable-next-line no-unused-vars
-            let lookupCache = Object.entries(c.storage.user.cache).filter(([k, v]) => v.twitch == channel.slice(1))[0];
-            let cache = lookupCache[1];
+            let cache = (() => {
+                for (var k in c.storage.user.cache) {
+                    let cache = c.storage.user.cache[k];
+                    if(cache.twitch == channel.slice(1)) return cache;
+                }
+            })();
+            if(typeof cache == "undefined") return;
 
             let beatmapId = message.match(c.storage.patterns.beatmap_id);
             let setId = message.match(c.storage.patterns.set_id);

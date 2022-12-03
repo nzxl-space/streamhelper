@@ -98,7 +98,8 @@ exports.storage = {
     user: {
         currentlyPlaying: {},
         lastChecked: {},
-        cache: {}
+        cache: {},
+        banchoNP: {}
     },
     tokens: {
         twitch: {

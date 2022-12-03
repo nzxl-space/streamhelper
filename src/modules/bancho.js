@@ -2,6 +2,59 @@ const c = require("../constants");
 
 function connect() {
     return new Promise((resolve, reject) => {
+        c.client.bancho.on("PM", async (pm) => {
+            if(pm.self) return;
+
+            let username = pm.user.ircUsername;
+            let message = pm.message;
+
+            if(username == process.env.OSU_USERNAME) return;
+            
+            let cache = (() => {
+                for (var k in c.storage.user.cache) {
+                    let cache = c.storage.user.cache[k];
+                    if(cache.osu.ircUsername == username) return cache;
+                }
+            })();
+            if(typeof cache == "undefined") return;
+
+            if(message.match(/^!w/) && typeof c.storage.user.banchoNP[`${username}`] != "undefined") {
+                let mods = message.match(c.storage.patterns.beatmap_mods);
+                if(!mods || mods.length <= 0) return await pm.user.sendMessage(`[PP] × No mods specified - Example: !w +HDDT`);
+
+                let map = c.storage.user.banchoNP[`${username}`];
+
+                let pp = await c.client.calculator.calculate({
+                    beatmapId: map.beatmap_id,
+                    mods: mods.toString().toUpperCase()
+                });
+
+                let newValues = {
+                    A: Math.round(pp.performance[0].totalPerformance),
+                    S: Math.round(pp.performance[1].totalPerformance),
+                    X: Math.round(pp.performance[2].totalPerformance),
+                    Stars: Math.round(pp.difficulty.starRating * 100) / 100,
+                    AR: Math.round(pp.difficulty.approachRate * 100) / 100,
+                    BPM: Math.round(pp.beatmapInfo.bpmMode * 100) / 100,
+                    Length: pp.beatmapInfo.length
+                }
+
+                await pm.user.sendMessage(`[PP] × [https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}] +${mods.toString().toUpperCase()} | 95%: ${newValues.A}pp - 98%: ${newValues.S}pp - 99%: ${newValues.X}pp | (★ ${newValues.Stars}, AR ${newValues.AR}, BPM ${newValues.BPM} - ${c.lib.moment(newValues.Length*1000).format("mm:ss")})`);
+
+                return;
+            }
+
+            let beatmapId = message.match(c.storage.patterns.beatmap_id);
+            if(beatmapId) {
+                let map = await getBeatmap(Number(beatmapId[0]));
+                await pm.user.sendMessage(`[PP] × [https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}] | 95%: ${map.pp.A}pp - 98%: ${map.pp.S}pp - 99%: ${map.pp.X}pp | (★ ${map.stars}, AR ${map.stats.ar}, BPM ${map.stats.bpm} - ${c.lib.moment(map.stats.length*1000).format("mm:ss")})`);
+
+                c.storage.user.banchoNP[`${username}`] = map;
+
+                return;
+            }
+        });
+
         c.client.bancho.on("connected", () => {
             resolve(`Bancho connected as ${process.env.OSU_USERNAME}!`);
         });
