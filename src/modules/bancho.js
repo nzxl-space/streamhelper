@@ -7,8 +7,6 @@ function connect() {
 
             let username = pm.user.ircUsername;
             let message = pm.message;
-
-            if(username == process.env.OSU_USERNAME) return;
             
             let cache = (() => {
                 for (var k in c.storage.user.cache) {
@@ -44,7 +42,10 @@ function connect() {
                 return;
             }
 
-            let beatmapId = message.match(c.storage.patterns.beatmap_id);
+            let action = pm.getAction();
+            if(typeof action == "undefined") return;
+
+            let beatmapId = action.match(c.storage.patterns.beatmap_id);
             if(beatmapId) {
                 let map = await getBeatmap(Number(beatmapId[0]));
                 await pm.user.sendMessage(`[PP] × [https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}] | 95%: ${map.pp.A}pp - 98%: ${map.pp.S}pp - 99%: ${map.pp.X}pp | (★ ${map.stars}, AR ${map.stats.ar}, BPM ${map.stats.bpm} - ${c.lib.moment(map.stats.length*1000).format("mm:ss")})`);
