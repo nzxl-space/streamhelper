@@ -37,7 +37,7 @@ function connect() {
                     Length: pp.beatmapInfo.length
                 }
 
-                await pm.user.sendMessage(`[PP] × [https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}] +${mods.toString().toUpperCase()} | 95%: ${newValues.A}pp - 98%: ${newValues.S}pp - 99%: ${newValues.X}pp | (★ ${newValues.Stars}, AR ${newValues.AR}, BPM ${newValues.BPM} - ${c.lib.moment(newValues.Length*1000).format("mm:ss")})`);
+                await pm.user.sendMessage(`[PP] × [https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}] +${mods.toString().toUpperCase()} | 95%: ${newValues.A}pp - 99%: ${newValues.S}pp - 100%: ${newValues.X}pp | (★ ${newValues.Stars}, AR ${newValues.AR}, BPM ${newValues.BPM} - ${c.lib.moment(newValues.Length*1000).format("mm:ss")})`);
 
                 return;
             }
@@ -48,7 +48,7 @@ function connect() {
             let beatmapId = action.match(c.storage.patterns.beatmap_id);
             if(beatmapId) {
                 let map = await getBeatmap(Number(beatmapId[0]));
-                await pm.user.sendMessage(`[PP] × [https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}] | 95%: ${map.pp.A}pp - 98%: ${map.pp.S}pp - 99%: ${map.pp.X}pp | (★ ${map.stars}, AR ${map.stats.ar}, BPM ${map.stats.bpm} - ${c.lib.moment(map.stats.length*1000).format("mm:ss")})`);
+                await pm.user.sendMessage(`[PP] × [https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}] | 95%: ${map.pp.A}pp - 99%: ${map.pp.S}pp - 100%: ${map.pp.X}pp | (★ ${map.stars}, AR ${map.stats.ar}, BPM ${map.stats.bpm} - ${c.lib.moment(map.stats.length*1000).format("mm:ss")})`);
 
                 c.storage.user.banchoNP[`${username}`] = map;
 
