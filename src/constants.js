@@ -68,13 +68,15 @@ exports.lib = {
     },
     path: require("path"),
     clone: require("clone"),
-    fs: require("fs")
+    fs: require("fs"),
+    median: require("median")
 }
 
 exports.database = {
     users: null,
     maps: null,
-    userCount: null
+    userCount: null,
+    r: null
 }
 
 exports.storage = {
@@ -93,6 +95,22 @@ exports.storage = {
         "2": "approved",
         "4": "loved",
         "3": "qualified"
+    },
+    genres: {
+        0: "Any",
+        1: "Unspecified",
+        2: "Video Game",
+        3: "Anime",
+        4: "Rock",
+        5: "Pop",
+        6: "Other",
+        7: "Novelty",
+        9: "Hip Hop",
+        10: "Electronic",
+        11: "Metal",
+        12: "Classical",
+        13: "Folk",
+        14: "Jazz"
     },
     discordURL: `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_PUBLIC}&redirect_uri=${process.env.DISCORD_REDIRECT_URI}&response_type=code&scope=identify%20connections%20guilds.join`,
     user: {
@@ -132,7 +150,8 @@ exports.funcs = {
     bancho: {
         connect: require("./modules/bancho").connect,
         getScores: require("./modules/bancho").getScores,
-        getBeatmap: require("./modules/bancho").getBeatmap
+        getBeatmap: require("./modules/bancho").getBeatmap,
+        recommend: require("./modules/bancho").recommend
     },
     mongo: {
         connect: require("./modules/mongodb").connect
@@ -141,5 +160,6 @@ exports.funcs = {
         createServer: require("./modules/express").createServer
     },
     log: require("./modules/bucket").log,
-    upload: require("./modules/bucket").upload
+    upload: require("./modules/bucket").upload,
+    shuffle: require("./modules/bancho").shuffle
 }

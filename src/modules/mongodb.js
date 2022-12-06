@@ -10,6 +10,7 @@ function connect() {
             c.database.users = db.collection("users");
             c.database.maps = db.collection("maps");
             c.database.userCount = await c.database.users.distinct("id");
+            c.database.r = db.collection("recommendations");
 
             resolve("MongoDB connected!");
         });

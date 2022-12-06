@@ -16,44 +16,67 @@ function connect() {
             })();
             if(typeof cache == "undefined") return;
 
-            if(message.match(/^!w/) && typeof c.storage.user.banchoNP[`${username}`] != "undefined") {
-                let mods = message.match(c.storage.patterns.beatmap_mods);
-                if(!mods || mods.length <= 0) return await pm.user.sendMessage(`[PP] × No mods specified - Example: !w +HDDT`);
-
-                let map = c.storage.user.banchoNP[`${username}`];
-
-                let pp = await c.client.calculator.calculate({
-                    beatmapId: map.beatmap_id,
-                    mods: mods.toString().toUpperCase()
-                });
-
-                let newValues = {
-                    A: Math.round(pp.performance[0].totalPerformance),
-                    S: Math.round(pp.performance[1].totalPerformance),
-                    X: Math.round(pp.performance[2].totalPerformance),
-                    Stars: Math.round(pp.difficulty.starRating * 100) / 100,
-                    AR: Math.round(pp.difficulty.approachRate * 100) / 100,
-                    BPM: Math.round(pp.beatmapInfo.bpmMode * 100) / 100,
-                    Length: pp.beatmapInfo.length
-                }
-
-                await pm.user.sendMessage(`[PP] × [https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}] +${mods.toString().toUpperCase()} | 95%: ${newValues.A}pp - 99%: ${newValues.S}pp - 100%: ${newValues.X}pp | (★ ${newValues.Stars}, AR ${newValues.AR}, BPM ${newValues.BPM} - ${c.lib.moment(newValues.Length*1000).format("mm:ss")})`);
-
-                return;
-            }
-
             let action = pm.getAction();
-            if(typeof action == "undefined") return;
-
-            let beatmapId = action.match(c.storage.patterns.beatmap_id);
-            if(beatmapId) {
-                let map = await getBeatmap(Number(beatmapId[0]));
-                await pm.user.sendMessage(`[PP] × [https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}] | 95%: ${map.pp.A}pp - 99%: ${map.pp.S}pp - 100%: ${map.pp.X}pp | (★ ${map.stars}, AR ${map.stats.ar}, BPM ${map.stats.bpm} - ${c.lib.moment(map.stats.length*1000).format("mm:ss")})`);
-
-                c.storage.user.banchoNP[`${username}`] = map;
-
-                return;
+            if(typeof action != "undefined") {
+                let beatmapId = action.match(c.storage.patterns.beatmap_id);
+                if(beatmapId) {
+                    let map = await getBeatmap(Number(beatmapId[0]));
+                    await pm.user.sendMessage(`[PP] × [https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}] | 95%: ${map.pp.A}pp - 99%: ${map.pp.S}pp - 100%: ${map.pp.X}pp | (★ ${map.stars}, AR ${map.stats.ar}, BPM ${map.stats.bpm} - ${c.lib.moment(map.stats.length*1000).format("mm:ss")})`);
+    
+                    c.storage.user.banchoNP[`${username}`] = map;
+    
+                    return;
+                }
             }
+
+            if(!message.startsWith("!")) return;
+            let [command, ...args] = message.slice(1).trim().split(" ");
+
+            switch (command.toLowerCase()) {
+                case "with":
+                case "w": {
+                    let map = c.storage.user.banchoNP[`${username}`];
+                    if(typeof map != "undefined") {
+                        if(args.length <= 0) {
+                            return await pm.user.sendMessage(`[PP] × No mods specified - Example: !w +HDDT`);
+                        }
+
+                        let mods = args[0].match(c.storage.patterns.beatmap_mods);
+                        if(!mods || mods.length <= 0) {
+                            return await pm.user.sendMessage(`[PP] × Invalid mods specified - Example: !w +HDDT`);
+                        }
+
+                        let pp = await c.client.calculator.calculate({
+                            beatmapId: map.beatmap_id,
+                            mods: mods.toString().toUpperCase()
+                        });
+        
+                        let newValues = {
+                            A: Math.round(pp.performance[0].totalPerformance),
+                            S: Math.round(pp.performance[1].totalPerformance),
+                            X: Math.round(pp.performance[2].totalPerformance),
+                            Stars: Math.round(pp.difficulty.starRating * 100) / 100,
+                            AR: Math.round(pp.difficulty.approachRate * 100) / 100,
+                            BPM: Math.round(pp.beatmapInfo.bpmMode * 100) / 100,
+                            Length: pp.beatmapInfo.length
+                        }
+        
+                        await pm.user.sendMessage(`[PP] × [https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}] +${mods.toString().toUpperCase()} | 95%: ${newValues.A}pp - 99%: ${newValues.S}pp - 100%: ${newValues.X}pp | (★ ${newValues.Stars}, AR ${newValues.AR}, BPM ${newValues.BPM} - ${c.lib.moment(newValues.Length*1000).format("mm:ss")})`);
+                    }
+                    break;
+                }
+                case "recommend":
+                case "r": {
+                    let mods = args.length >= 1 ? args[0].match(c.storage.patterns.beatmap_mods) : "";
+                    let re = await recommend(cache.osu.ircUsername, 1, mods.toString().toUpperCase());
+
+                    await pm.user.sendMessage(re[0]);
+
+                    break;
+                }
+            }
+
+
         });
 
         c.client.bancho.on("connected", () => {
@@ -483,3 +506,204 @@ function getBeatmap(map) {
     });
 }
 module.exports.getBeatmap = getBeatmap;
+
+/**
+ * Simple function to shuffle an array - https://stackoverflow.com/a/2450976
+ * @param {Array} array 
+ * @returns {Array}
+ */
+function shuffle(array) {
+    let currentIndex = array.length,  randomIndex;
+
+    // While there remain elements to shuffle.
+    while (currentIndex != 0) {
+
+    // Pick a remaining element.
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+
+    // And swap it with the current element.
+    [array[currentIndex], array[randomIndex]] = [
+        array[randomIndex], array[currentIndex]];
+    }
+
+    return array;
+}
+module.exports.shuffle = shuffle;
+
+/**
+ * Simple recommendations (i like the word simple)
+ * @param {String} username - osu! username
+ * @param {Number|null} howMany - how many recommendations to give
+ * @param {String|null} mod - DT or HR
+ * @returns 
+ */
+function recommend(username, howMany = 1, mod = null) {
+    return new Promise(async (resolve, reject) => {
+        if(!username)
+            return reject("No username defined");
+
+        let user = await c.database.r.findOne({ user: username });
+        if(!user || user.length <= 0) {
+            user = {
+                user: username,
+                stats: {
+                    bpm: [],
+                    stars: [],
+                    length: [],
+                    genre: [],
+                    pp: [],
+                    accuracy: []
+                },
+                r: []
+            };
+    
+            let top_scores = await c.client.bancho.osuApi.user.getBest(username, 0, 100);
+            for (let i = 0; i < top_scores.length; i++) {
+                let score = top_scores[i];
+    
+                let map = await c.database.maps.findOne({ beatmap_id: score.beatmapId });
+                if(map == null) continue;
+    
+                let accuracy = Math.round(100 * (score.count50*50 + score.count100*100 + score.count300*300) / (score.count50*300 + score.count100*300 + score.count300*300) * 100) / 100;
+    
+                user["stats"].pp.push(Math.round(score.pp));
+                user["stats"].genre.push(Number(map.genre) ? map.genre : 0);
+                user["stats"].bpm.push(map.stats.bpm);
+                user["stats"].stars.push(map.stars);
+                user["stats"].length.push(map.stats.length);
+                user["stats"].accuracy.push(accuracy);
+            }
+    
+            user["stats"].pp = c.lib.median(user["stats"].pp);
+            user["stats"].accuracy = Math.floor(user["stats"].accuracy.reduce((a, b) => a + b, 0) / user["stats"].accuracy.length * 100) / 100;
+    
+            user["stats"].bpm = Math.round(user["stats"].bpm.reduce((a, b) => a + b, 0) / user["stats"].bpm.length);
+            user["stats"].length = Math.round(user["stats"].length.reduce((a, b) => a + b, 0) / user["stats"].length.length);
+    
+            user["stats"].stars = Math.round(user["stats"].stars.reduce((a, b) => a + b, 0) / user["stats"].stars.length);
+            if(user["stats"].pp < 250 && user["stats"].stars >= 6) {
+                user["stats"].stars -= 1;
+            }
+            if(user["stats"].pp >= 549 && user["stats"].stars <= 6) {
+                user["stats"].stars += 1;
+            }
+    
+            user["stats"].genre = user["stats"].genre.sort((a, b) => user["stats"].genre.filter(v => v === a).length - user["stats"].genre.filter(v => v === b).length).pop();
+    
+            await c.database.r.insertOne(user);
+        }
+
+        let lookup = [];
+
+        lookup.push({ 
+            $or: [ 
+                { status: "ranked" },
+                { status: "loved" },
+                { status: "qualified" }
+            ]
+        });
+    
+        lookup.push({ "stats.length": { $lt: user["stats"].length }});
+        lookup.push({ "stats.bpm": { $lt: user["stats"].bpm }});
+        
+        if(user["stats"].genre == 3 || user["stats"].genre == 5 || user["stats"].genre == 2 || user["stats"].genre == 10) {  // Anime
+            lookup.push({ 
+                $or: [
+                    { "genre": 3 },
+                    { "genre": 5 },
+                    { "genre": 2 },
+                    { "genre": 10 }
+                ]
+            });
+        } else if(user["stats"].genre == 11 || user["stats"].genre == 3 || user["stats"].genre == 4) {  // Metal
+            lookup.push({ 
+                $or: [
+                    { "genre": 11 },
+                    { "genre": 3 },
+                    { "genre": 4 }
+                ]
+            });
+        } else {
+            lookup.push({ 
+                $or: [
+                    { "genre": 2 },
+                    { "genre": 3 },
+                    { "genre": 4 },
+                    { "genre": 5 },
+                    { "genre": 9 },
+                    { "genre": 10 },
+                    { "genre": 11 },
+                    { "genre": 14 },
+                ]
+            });
+        }
+    
+        if(mod.match(/HR/i)) {
+            lookup.push({ "stars": { $gt: (user["stats"].stars - .2) } });
+            lookup.push({ "stars": { $lt: (user["stats"].stars + .6) } });
+        } else if(mod.match(/DT/i)) {
+            lookup.push({ "stars": { $gt: (user["stats"].stars - 2) } });
+            lookup.push({ "stars": { $lt: (user["stats"].stars - 1.2) } });
+        } else {
+            lookup.push({ "stars": { $gt: (user["stats"].stars) } });
+    
+            if(user["stats"].pp <= 549) {
+                lookup.push({ "stars": { $lt: (user["stats"].stars + 1.4) } });
+            } else if(user["stats"].pp >= 550) {
+                lookup.push({ "stars": { $lt: (user["stats"].stars + 2) } });
+            }
+    
+            if(Math.floor(user["stats"].accuracy % 100) < 97) {
+                lookup.push({ "pp.A": { $lt: Math.round(user["stats"].pp*1.1) }})
+            } else if(Math.floor(user["stats"].accuracy % 100) > 97) {
+                lookup.push({ "pp.X": { $lt: Math.round(user["stats"].pp*1.35) }})
+            }
+        }
+    
+
+        let results = shuffle(await c.database.maps.find({ $and: lookup }).toArray()); // shuffle results
+        results = results.filter(x => user["r"].includes(x.beatmap_id) == false);
+
+        if(results.length <= 0) {
+            await c.database.r.updateOne({ user: username }, { $set: { r: [] } }); // reset list
+            results = shuffle(await c.database.maps.find({ $and: lookup }).toArray()); // shuffle results
+        }
+
+        results = results.splice(0, howMany); // how many requests uwu
+
+        let found = [];
+        for(let i = 0; i < results.length; i++) {
+            let map = results[i];
+    
+            if(mod.match(/HR|DT/i)) {
+                let a = await c.client.calculator.calculate({
+                    beatmapId: map.beatmap_id,
+                    mods: mod.toUpperCase()
+                });
+    
+                map.pp.X = a.performance[2].totalPerformance;
+                map.stars = Math.round(a.difficulty.starRating * 100) / 100;
+                map.stats.ar = Math.round(a.beatmapInfo.approachRate * 100) / 100;
+                map.stats.bpm = Math.round(a.beatmapInfo.bpmMode * 100) / 100;
+                map.stats.length = a.beatmapInfo.length;
+            } 
+    
+            let recommend = {
+                id: map.beatmap_id,
+                name: `[https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}]`,
+                mapper: map.creator,
+                pp: `Future You: ${Math.floor((map.pp.X-((map.pp.X)/Math.floor(user["stats"].accuracy % 5 * 10))))}pp`,
+                status: `${map.status[0].toUpperCase()}${map.status.slice(1)}`,
+                stats: `★ ${map.stars}, AR ${map.stats.ar}, BPM ${map.stats.bpm} - ${c.lib.moment(map.stats.length*1000).format("mm:ss")}`,
+                mods: mod.match(/HR|DT/i) ? `+${mod.toUpperCase()} ` : ""
+            }
+    
+            await c.database.r.updateOne({ user: username }, { $push: { r: map.beatmap_id } });
+            found.push(`[${recommend.status}] × ${recommend.name} ${recommend.mods}| (${recommend.stats}) | ${recommend.pp}`);
+        }
+
+        resolve(found);
+    });
+}
+module.exports.recommend = recommend;

@@ -15,7 +15,7 @@ const banchoClient = new Banchojs.BanchoClient({
     apiKey: process.env.OSU_API_KEY
 });
 
-const genreEnum = {
+const Genres = {
     0: "Any",
     1: "Unspecified",
     2: "Video Game",
@@ -30,114 +30,234 @@ const genreEnum = {
     12: "Classical",
     13: "Folk",
     14: "Jazz"
-}
+};
 
-const modsEnum = {
-    NF: 1<<0,
-    EZ: 1<<1,
-    HD: 1<<3,
-    HR: 1<<4,
-    SD: 1<<5,
-    PF: 1<<14,
-    NC: 1<<9,
-    DT: 1<<6,
-    RX: 1<<7,
-    HT: 1<<8,
-    FL: 1<<10,
-    SO: 1<<12
-}
+(async () => {
+    if(!process.argv[2]) 
+        return console.log("No user defined");
 
-mongoClient.connect(async err => {
-    if(err) return console.log("MongoDB failed!");
-    const mapData = mongoClient.db("osu").collection("maps");
+    let username = process.argv[2];
+    let mod = process.argv[4] ? process.argv[4] : "";
+    let howMany = process.argv[3] ? process.argv[3] : 1;
+
+    await mongoClient.connect().catch(() => {
+        console.log("MongoDB connection failed!")
+        process.exit();
+    });
     console.log("MongoDB connected!");
+    const db = mongoClient.db("osu");
 
-    // await banchoClient.connect().then(console.log("Bancho connected!"));
+    const maps = db.collection("maps");
+    const r = db.collection("recommendations");
 
-    let username = "kiyomii";
-    let howMany = 10;
-    let data = { scores: await banchoClient.osuApi.user.getBest(username, 0, 100), performance: [], bpm: [], genre: [], stars: [] };
+    let user = await r.findOne({ user: username });
+    if(!user || user.length <= 0) { // do the magic and collect basic info from user
+        user = {
+            user: username,
+            stats: {
+                bpm: [],
+                stars: [],
+                length: [],
+                genre: [],
+                pp: [],
+                accuracy: []
+            },
+            r: []
+        };
 
-    console.time("Process time");
-    let done = false;
+        let top_scores = await banchoClient.osuApi.user.getBest(username, 0, 100);
+        for (let i = 0; i < top_scores.length; i++) {
+            let score = top_scores[i];
 
-    let i = 0;
-    for (i = 0; i < data["scores"].length; i++) {
-        let score = data.scores[i];
+            let map = await maps.findOne({ beatmap_id: score.beatmapId });
+            if(map == null) continue;
 
-        let map = await mapData.findOne({ beatmap_id: score.beatmapId });
-        if(map == null) continue;
+            let accuracy = Math.round(100 * (score.count50*50 + score.count100*100 + score.count300*300) / (score.count50*300 + score.count100*300 + score.count300*300) * 100) / 100;
 
-        data["performance"].push(Math.round(score.pp));
-        data["genre"].push(Number(map.genre) ? map.genre : 0);
-        data["bpm"].push(map.stats.bpm);
-        data["stars"].push(map.stars);
-        
-        console.log(score.scoreId, `DONE (${(i+1)}/${data["scores"].length})`);
-    }
-
-    while ((i+1) <= data["scores"].length) {
-        await new Promise(p => setTimeout(p, 25));
-    }
-    
-    let genre = genreEnum[data["genre"].sort((a, b) => data["genre"].filter(v => v === a).length - data["genre"].filter(v => v === b).length).pop()];
-    let performance = median(data["performance"]);
-    let bpm = Math.floor(data["bpm"].reduce((a, b) => a + b, 0) / data["bpm"].length);
-    let sr = Math.round(data["stars"].reduce((a, b) => a + b, 0) / data["stars"].length)-Number(String(data["stars"].length).slice(-1)*0.1);
-
-    console.log(`${username} — Genre: ${genre} | Avg. BPM ${bpm} | Min. SR: ${sr} | Performance: ${performance}pp`);
-    
-    let found = [];
-    let lookup = await mapData.find(
-        { 
-            $and: 
-            [
-                { "pp.A": { $gt: Math.round(performance*0.75) }},
-                { "pp.X": { $lt: Math.round(performance*1.75) }},
-                { "stats.bpm": { $gt: Math.round(bpm-20) }},
-                { "stats.bpm": { $lt: Math.round(bpm+10) }},
-                { "genre": (Object.values(genreEnum).map(v => v).indexOf(genre)+1) },
-                { "stars": { $gt: sr }},
-                { "stars": { $lt: (sr+0.5) }},
-                { "status": "ranked" }
-            ]
+            user["stats"].pp.push(Math.round(score.pp));
+            user["stats"].genre.push(Number(map.genre) ? map.genre : 0);
+            user["stats"].bpm.push(map.stats.bpm);
+            user["stats"].stars.push(map.stars);
+            user["stats"].length.push(map.stats.length);
+            user["stats"].accuracy.push(accuracy);
         }
-    ).toArray();
 
-    while (found.length < howMany) {
-        if(lookup.length <= 0) break;
-        if(found.length == lookup.length) break;
+        user["stats"].pp = median(user["stats"].pp);
+        user["stats"].accuracy = Math.floor(user["stats"].accuracy.reduce((a, b) => a + b, 0) / user["stats"].accuracy.length * 100) / 100;
 
-        let r = lookup[Math.floor((Math.random()*lookup.length))];
-        if(found.filter(map => map.beatmap_id == r.beatmap_id).length >= 1) continue;
+        user["stats"].bpm = Math.round(user["stats"].bpm.reduce((a, b) => a + b, 0) / user["stats"].bpm.length);
+        user["stats"].length = Math.round(user["stats"].length.reduce((a, b) => a + b, 0) / user["stats"].length.length);
 
-        found.push({
-            id: r.beatmap_id,
-            name: `[https://osu.ppy.sh/b/${r.beatmap_id} ${r.name}]`,
-            mapper: r.creator,
-            pp: `~${Math.floor((r.pp.A+r.pp.S+r.pp.X)/3)}pp`,
-            status: `${r.status[0].toUpperCase()}${r.status.slice(1)}`,
-            stats: `★ ${r.stars}, AR ${r.stats.ar}, BPM ${r.stats.bpm} - ${moment(r.stats.length*1000).format("mm:ss")}`,
+        user["stats"].stars = Math.round(user["stats"].stars.reduce((a, b) => a + b, 0) / user["stats"].stars.length);
+        if(user["stats"].pp < 250 && user["stats"].stars >= 6) {
+            user["stats"].stars -= 1;
+        }
+        if(user["stats"].pp >= 549 && user["stats"].stars <= 6) {
+            user["stats"].stars += 1;
+        }
+
+        user["stats"].genre = user["stats"].genre.sort((a, b) => user["stats"].genre.filter(v => v === a).length - user["stats"].genre.filter(v => v === b).length).pop();
+
+        await r.insertOne(user);
+    }
+
+    console.log(`${username} — ♫ ${Genres[user["stats"].genre]} | ♥ ${user["stats"].bpm} | ✩ ${user["stats"].stars} | ツ ${moment(user["stats"].length*1000).format("mm:ss")} | † ${user["stats"].pp}pp | ✪ ${user["stats"].accuracy}%`);
+
+    /**
+     * proposal
+     * > if user average star rating is 6 star
+     *  > nomod recommend from 6-7.4 stars
+     *  > hr recommend up to 7 star and below
+     *  > dt recommend from 4-5.3
+     * AR and OD are not affected
+     * Hidden Mod is not affected
+     * FL, SO, SD/PF are not affected
+     * EZ and Halftime could be affected, but for now I'll not bother
+     * > if user accuracy is 95-97
+     *  > then recommend pp.A
+     *  > else recommend pp.X
+     *  > Look for maps that are around the calculated average (pp.A+pp.S+pp.X)
+     * Maps need to be ranked, loved or qualified
+     * > if user genre is Anime
+     *  > then include Pop, Video Game, Electronic
+     * > if user genre is Metal
+     *  > then include Rock and Anime
+     * > otherwise include all genres
+     * Maps length can't be longer than calculated average
+     * Maps BPM can't be higher than calculated average
+     * Check if the map has been recommended before
+     *  > if there are no other recommendations available, clear the list
+     *  > add the recommended map to the `already recommended maps` list (god i hate this)
+     */
+
+    let lookup = [];
+
+    lookup.push({ 
+        $or: [ 
+            { status: "ranked" },
+            { status: "loved" },
+            { status: "qualified" }
+        ]
+    });
+
+    lookup.push({ "stats.length": { $lt: user["stats"].length }});
+    lookup.push({ "stats.bpm": { $lt: user["stats"].bpm }});
+    
+    if(user["stats"].genre == 3 || user["stats"].genre == 5 || user["stats"].genre == 2 || user["stats"].genre == 10) {  // Anime
+        lookup.push({ 
+            $or: [
+                { "genre": 3 },
+                { "genre": 5 },
+                { "genre": 2 },
+                { "genre": 10 }
+            ]
+        });
+    } else if(user["stats"].genre == 11 || user["stats"].genre == 3 || user["stats"].genre == 4) {  // Metal
+        lookup.push({ 
+            $or: [
+                { "genre": 11 },
+                { "genre": 3 },
+                { "genre": 4 }
+            ]
+        });
+    } else {
+        lookup.push({ 
+            $or: [
+                { "genre": 2 },
+                { "genre": 3 },
+                { "genre": 4 },
+                { "genre": 5 },
+                { "genre": 9 },
+                { "genre": 10 },
+                { "genre": 11 },
+                { "genre": 14 },
+            ]
         });
     }
 
-    console.log(`Found ${found.length} recommendations!`);
+    if(mod.toUpperCase() == "HR") {
+        lookup.push({ "stars": { $gt: (user["stats"].stars - .2) } });
+        lookup.push({ "stars": { $lt: (user["stats"].stars + .6) } });
+    } else if(mod.toUpperCase() == "DT") {
+        lookup.push({ "stars": { $gt: (user["stats"].stars - 2) } });
+        lookup.push({ "stars": { $lt: (user["stats"].stars - 1.2) } });
+    } else {
+        lookup.push({ "stars": { $gt: (user["stats"].stars) } });
 
-    if(found.length >= 1) {
-        for (let x = 0; x < found.length; x++) {
-            let format = `[${found[x].status}] × ${found[x].name} | (${found[x].stats}) | ${found[x].pp}`;
-            console.log(format);
+        if(user["stats"].pp <= 549) {
+            lookup.push({ "stars": { $lt: (user["stats"].stars + 1.4) } });
+        } else if(user["stats"].pp >= 550) {
+            lookup.push({ "stars": { $lt: (user["stats"].stars + 2) } });
+        }
 
-            if((x+1) == found.length) {
-                done = true;
-            }
+        if(Math.floor(user["stats"].accuracy % 100) < 97) {
+            lookup.push({ "pp.A": { $lt: Math.round(user["stats"].pp*1.1) }})
+        } else if(Math.floor(user["stats"].accuracy % 100) > 97) {
+            lookup.push({ "pp.X": { $lt: Math.round(user["stats"].pp*1.35) }})
         }
     }
 
-    while (!done) {
-        await new Promise(p => setTimeout(p, 25));
+    let results = shuffle(await maps.find({ $and: lookup }).toArray()); // shuffle results
+    results = results.filter(x => user["r"].includes(x.beatmap_id) == false);
+
+    if(results.length <= 0) {
+        await r.updateOne({ user: username }, { $set: { r: [] } }); // reset list
+        results = shuffle(await maps.find({ $and: lookup }).toArray()); // shuffle results
     }
 
-    console.timeEnd("Process time");
+    results = results.splice(0, howMany); // how many requests uwu
+
+    console.log(`Found ${results.length} recommendations!`);
+
+    for(let i = 0; i < results.length; i++) {
+        let map = results[i];
+
+        if(mod.toUpperCase() == "DT" || mod.toUpperCase() == "HR") {
+            let c = await pp.calculate({
+                beatmapId: map.beatmap_id,
+                mods: mod.toUpperCase()
+            });
+
+            map.pp.X = c.performance[2].totalPerformance;
+            map.stars = Math.round(c.difficulty.starRating * 100) / 100;
+            map.stats.ar = Math.round(c.beatmapInfo.approachRate * 100) / 100;
+            map.stats.bpm = Math.round(c.beatmapInfo.bpmMode * 100) / 100;
+            map.stats.length = c.beatmapInfo.length;
+        } 
+
+        let recommend = {
+            id: map.beatmap_id,
+            name: `[https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}]`,
+            mapper: map.creator,
+            pp: `Future You: ${Math.floor((map.pp.X-((map.pp.X)/Math.floor(user["stats"].accuracy % 5 * 10))))}pp`,
+            status: `${map.status[0].toUpperCase()}${map.status.slice(1)}`,
+            stats: `★ ${map.stars}, AR ${map.stats.ar}, BPM ${map.stats.bpm} - ${moment(map.stats.length*1000).format("mm:ss")}`,
+            mods: mod.toUpperCase() == "DT" || mod.toUpperCase() == "HR" ? `+${mod.toUpperCase()} ` : ""
+        }
+
+        await r.updateOne({ user: username }, { $push: { r: map.beatmap_id } });
+        console.log(`[${recommend.status}] × ${recommend.name} ${recommend.mods}| (${recommend.stats}) | ${recommend.pp}`);
+    }
+
     process.exit();
-});
+})();
+
+// https://stackoverflow.com/a/2450976
+function shuffle(array) {
+    let currentIndex = array.length,  randomIndex;
+
+    // While there remain elements to shuffle.
+    while (currentIndex != 0) {
+
+    // Pick a remaining element.
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+
+    // And swap it with the current element.
+    [array[currentIndex], array[randomIndex]] = [
+        array[randomIndex], array[currentIndex]];
+    }
+
+    return array;
+}
+  
