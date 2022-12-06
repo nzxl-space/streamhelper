@@ -172,14 +172,14 @@ function getScores(username) {
 
             for(let i = 0; i < scores.length; i++) {
                 let score = scores[i];
-                if(typeof user["replays"] == "object" && Object.keys(user.replays).includes(`${score.beatmapId}`)) return;
+                if(typeof user["replays"] == "object" && Object.keys(user.replays).includes(`${score.scoreId}`)) return;
 
-                await c.database.users.updateOne({ osu_id: user.osu_id }, { $set: { [`replays.${String(score.beatmapId)}`]: `Rendering` }});
+                await c.database.users.updateOne({ osu_id: user.osu_id }, { $set: { [`replays.${score.scoreId}`]: `Rendering` }});
 
                 let replay = await c.lib.fetch(`${process.env.DOWNLOADURL}?userId=${score.userId}&beatmapId=${score.beatmapId}`);
                 let url = await render(replay.body);
 
-                await c.database.users.updateOne({ osu_id: user.osu_id }, { $set: { [`replays.${score.beatmapId}`]: `${url}` }});
+                await c.database.users.updateOne({ osu_id: user.osu_id }, { $set: { [`replays.${score.scoreId}`]: `${url}` }});
 
                 let accuracy = Math.round(100 * (score.count50*50 + score.count100*100 + score.count300*300) / (score.count50*300 + score.count100*300 + score.count300*300) * 100) / 100;
                 let map = await getBeatmap(score.beatmapId);
