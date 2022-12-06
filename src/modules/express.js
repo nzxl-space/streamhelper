@@ -62,7 +62,7 @@ function createServer() {
                 silenced: false,
                 silencedReq: false,
                 blacklist: [],
-                replays: [],
+                replays: {},
                 activityRetryCount: 0
             });
 

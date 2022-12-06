@@ -113,7 +113,7 @@ function render(replay) {
             }
         });
 
-        let replayForm = new FormData();
+        let replayForm = new c.lib.FormData();
         replayForm.append("replayFile", replay, { filename: "replay.osr", contentType: "application/octet-stream" });
         replayForm.append("username", "streamhelper");
         replayForm.append("resolution", "1280x720");
@@ -167,18 +167,19 @@ function getScores(username) {
             let user = await c.database.users.findOne({ osu_id: Number(username) });
             if(!user || user.length <= 0) return;
 
-            scores.forEach(async (score) => {
-                if(user["replays"] && Object.keys(user.replays).includes(`${score.beatmapId}`)) return;
+            let cache = c.storage.user.cache[`${user.twitch_id}`];
+            if(!cache) return;
 
-                let cache = c.storage.user.cache[`${user.twitch_id}`];
-                if(!cache) return;
+            for(let i = 0; i < scores.length; i++) {
+                let score = scores[i];
+                if(typeof user["replays"] == "object" && Object.keys(user.replays).includes(`${score.beatmapId}`)) return;
 
-                await c.database.users.updateOne({ id: Number(user.id) }, { $set: { [`replays.${score.beatmapId}`]: `Rendering` }});
+                await c.database.users.updateOne({ osu_id: user.osu_id }, { $set: { [`replays.${String(score.beatmapId)}`]: `Rendering` }});
 
                 let replay = await c.lib.fetch(`${process.env.DOWNLOADURL}?userId=${score.userId}&beatmapId=${score.beatmapId}`);
                 let url = await render(replay.body);
 
-                await c.database.users.updateOne({ id: Number(user.id) }, { $set: { [`replays.${score.beatmapId}`]: `${url}` }});
+                await c.database.users.updateOne({ osu_id: user.osu_id }, { $set: { [`replays.${score.beatmapId}`]: `${url}` }});
 
                 let accuracy = Math.round(100 * (score.count50*50 + score.count100*100 + score.count300*300) / (score.count50*300 + score.count100*300 + score.count300*300) * 100) / 100;
                 let map = await getBeatmap(score.beatmapId);
@@ -214,11 +215,9 @@ function getScores(username) {
                 if(c.client.twitch.getChannels().includes(`#${cache.twitch}`) && !user["silenced"]) {
                     c.client.twitch.say(`#${cache.twitch}`, `New top play recorded! You can watch it here: ${url} 🤙`);
                 } else {
-                    c.client.bancho.getUser(cache.osu.ircUsername).sendMessage(`[REPLAY] × New top play recorded! You can watch it here: ${url} =)`);
+                    c.client.bancho.getUser(cache.osu.ircUsername).sendMessage(`[REPLAY] × New top play recorded! You can watch it here: ${url} ಠಠ`);
                 }
-            });
-
-            return resolve();
+            }
         }
 
         resolve();
