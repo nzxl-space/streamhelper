@@ -67,9 +67,15 @@ function connect() {
                 }
                 case "recommend":
                 case "r": {
-                    let mods = args.length >= 1 ? args[0].match(c.storage.patterns.beatmap_mods) : "";
-                    let re = await recommend(cache.osu.ircUsername, 1, mods.toString().toUpperCase());
+                    let mods = "";
+                    if(args.length >= 1) {
+                        let match = args[0].match(c.storage.patterns.beatmap_mods);
+                        if(match) {
+                            mods = mods.toString().toUpperCase();
+                        }
+                    }
 
+                    let re = await recommend(cache.osu.ircUsername, 1, mods);
                     await pm.user.sendMessage(re[0]);
 
                     break;
