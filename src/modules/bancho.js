@@ -71,7 +71,7 @@ function connect() {
                     if(args.length >= 1) {
                         let match = args[0].match(c.storage.patterns.beatmap_mods);
                         if(match) {
-                            mods = mods.toString().toUpperCase();
+                            mods = match.toString().toUpperCase();
                         }
                     }
 
