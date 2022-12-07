@@ -610,8 +610,8 @@ function recommend(username, howMany = 1, mod = null) {
             ]
         });
     
-        lookup.push({ "stats.length": { $lt: user["stats"].length }});
-        lookup.push({ "stats.bpm": { $lt: user["stats"].bpm }});
+        lookup.push({ "stats.length": { $lt: Math.round(user["stats"].length / 10) * 10 }});
+        lookup.push({ "stats.bpm": { $lt: Math.round(user["stats"].bpm / 10) * 10 }});
         
         if(user["stats"].genre == 3 || user["stats"].genre == 5 || user["stats"].genre == 2 || user["stats"].genre == 10) {  // Anime
             lookup.push({ 
@@ -627,7 +627,8 @@ function recommend(username, howMany = 1, mod = null) {
                 $or: [
                     { "genre": 11 },
                     { "genre": 3 },
-                    { "genre": 4 }
+                    { "genre": 4 },
+                    { "genre": 2 }
                 ]
             });
         } else {
@@ -646,40 +647,40 @@ function recommend(username, howMany = 1, mod = null) {
         }
 
         if(mod.match(/HR/i)) {
-            lookup.push({ "stars": { $gt: (user["stats"].stars) } });
-            lookup.push({ "stars": { $lt: (user["stats"].stars + 1.2) } });
+            lookup.push({ "stars": { $gt: (user["stats"].stars - .5) } });
+            lookup.push({ "stars": { $lt: (user["stats"].stars + 1) } });
     
-            if(Math.floor(user["stats"].accuracy % 100) < 97) {
-                lookup.push({ "pp.X": { $gt: Math.round(user["stats"].pp) }})
-                lookup.push({ "pp.X": { $lt: Math.round(user["stats"].pp*1.3) }})
-            } else if(Math.floor(user["stats"].accuracy % 100) > 97) {
-                lookup.push({ "pp.X": { $gt: Math.round(user["stats"].pp) }})
-                lookup.push({ "pp.X": { $lt: Math.round(user["stats"].pp*1.5) }})
+            if(user["stats"].accuracy % 100 < 97) {
+                lookup.push({ "pp.X": { $gt: Math.round(user["stats"].pp*0.9) }})
+                lookup.push({ "pp.X": { $lt: Math.round(user["stats"].pp*1.1) }})
+            } else if(user["stats"].accuracy % 100 > 97) {
+                lookup.push({ "pp.X": { $gt: Math.round(user["stats"].pp*0.9) }})
+                lookup.push({ "pp.X": { $lt: Math.round(user["stats"].pp*1.4) }})
             }
         } else if(mod.match(/DT/i)) {
-            lookup.push({ "stars": { $gt: (user["stats"].stars - 1.2) } });
-            lookup.push({ "stars": { $lt: (user["stats"].stars + .6) } });
+            lookup.push({ "stars": { $gt: (user["stats"].stars - 2) } });
+            lookup.push({ "stars": { $lt: (user["stats"].stars + .5) } });
     
-            if(Math.floor(user["stats"].accuracy % 100) < 97) {
+            if(user["stats"].accuracy % 100 < 97) {
                 lookup.push({ "pp.A": { $lt: Math.round(user["stats"].pp/2.5) }})
-            } else if(Math.floor(user["stats"].accuracy % 100) > 97) {
+            } else if(user["stats"].accuracy % 100 > 97) {
                 lookup.push({ "pp.X": { $lt: Math.round(user["stats"].pp/2) }})
             }
         } else {
             lookup.push({ "stars": { $gt: (user["stats"].stars) } });
     
             if(user["stats"].pp <= 549) {
-                lookup.push({ "stars": { $lt: (user["stats"].stars + 1.4) } });
+                lookup.push({ "stars": { $lt: (user["stats"].stars + 1.5) } });
             } else if(user["stats"].pp >= 550) {
                 lookup.push({ "stars": { $lt: (user["stats"].stars + 2) } });
             }
     
-            if(Math.floor(user["stats"].accuracy % 100) < 97) {
-                lookup.push({ "pp.A": { $lt: Math.round(user["stats"].pp) }})
+            if(user["stats"].accuracy % 100 < 97) {
+                lookup.push({ "pp.A": { $lt: Math.round(user["stats"].pp*0.9) }})
                 lookup.push({ "pp.A": { $lt: Math.round(user["stats"].pp*1.1) }})
-            } else if(Math.floor(user["stats"].accuracy % 100) > 97) {
-                lookup.push({ "pp.X": { $gt: Math.round(user["stats"].pp) }})
-                lookup.push({ "pp.X": { $lt: Math.round(user["stats"].pp*1.45) }})
+            } else if(user["stats"].accuracy % 100 > 97) {
+                lookup.push({ "pp.X": { $gt: Math.round(user["stats"].pp*0.9) }})
+                lookup.push({ "pp.X": { $lt: Math.round(user["stats"].pp*1.4) }})
             }
         }
 
