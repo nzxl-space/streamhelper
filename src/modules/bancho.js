@@ -716,7 +716,7 @@ function recommend(username, howMany = 1, mod = null) {
                 id: map.beatmap_id,
                 name: `[https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}]`,
                 mapper: map.creator,
-                pp: `Est. PP: ${Math.floor(Math.max(user["stats"].pp, map.pp.S*1.05))}pp`,
+                pp: `~${Math.floor(map.pp.S*1.05)}pp`,
                 status: `${map.status[0].toUpperCase()}${map.status.slice(1)}`,
                 stats: `★ ${map.stars}, AR ${map.stats.ar}, BPM ${map.stats.bpm} - ${c.lib.moment(map.stats.length*1000).format("mm:ss")}`,
                 mods: mod.match(/HR|DT/i) ? `+${mod.toUpperCase()} ` : ""
