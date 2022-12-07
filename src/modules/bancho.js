@@ -644,13 +644,27 @@ function recommend(username, howMany = 1, mod = null) {
                 ]
             });
         }
-    
+
         if(mod.match(/HR/i)) {
-            lookup.push({ "stars": { $gt: (user["stats"].stars - .2) } });
-            lookup.push({ "stars": { $lt: (user["stats"].stars + .6) } });
+            lookup.push({ "stars": { $gt: (user["stats"].stars) } });
+            lookup.push({ "stars": { $lt: (user["stats"].stars + 1.2) } });
+    
+            if(Math.floor(user["stats"].accuracy % 100) < 97) {
+                lookup.push({ "pp.X": { $gt: Math.round(user["stats"].pp) }})
+                lookup.push({ "pp.X": { $lt: Math.round(user["stats"].pp*1.3) }})
+            } else if(Math.floor(user["stats"].accuracy % 100) > 97) {
+                lookup.push({ "pp.X": { $gt: Math.round(user["stats"].pp) }})
+                lookup.push({ "pp.X": { $lt: Math.round(user["stats"].pp*1.5) }})
+            }
         } else if(mod.match(/DT/i)) {
-            lookup.push({ "stars": { $gt: (user["stats"].stars - 2) } });
-            lookup.push({ "stars": { $lt: (user["stats"].stars - 1.2) } });
+            lookup.push({ "stars": { $gt: (user["stats"].stars - 1.2) } });
+            lookup.push({ "stars": { $lt: (user["stats"].stars + .6) } });
+    
+            if(Math.floor(user["stats"].accuracy % 100) < 97) {
+                lookup.push({ "pp.A": { $lt: Math.round(user["stats"].pp/2.5) }})
+            } else if(Math.floor(user["stats"].accuracy % 100) > 97) {
+                lookup.push({ "pp.X": { $lt: Math.round(user["stats"].pp/2) }})
+            }
         } else {
             lookup.push({ "stars": { $gt: (user["stats"].stars) } });
     
@@ -661,12 +675,13 @@ function recommend(username, howMany = 1, mod = null) {
             }
     
             if(Math.floor(user["stats"].accuracy % 100) < 97) {
+                lookup.push({ "pp.A": { $lt: Math.round(user["stats"].pp) }})
                 lookup.push({ "pp.A": { $lt: Math.round(user["stats"].pp*1.1) }})
             } else if(Math.floor(user["stats"].accuracy % 100) > 97) {
-                lookup.push({ "pp.X": { $lt: Math.round(user["stats"].pp*1.35) }})
+                lookup.push({ "pp.X": { $gt: Math.round(user["stats"].pp) }})
+                lookup.push({ "pp.X": { $lt: Math.round(user["stats"].pp*1.45) }})
             }
         }
-    
 
         let results = shuffle(await c.database.maps.find({ $and: lookup }).toArray()); // shuffle results
         results = results.filter(x => user["r"].includes(x.beatmap_id) == false);
@@ -688,6 +703,7 @@ function recommend(username, howMany = 1, mod = null) {
                     mods: mod.toUpperCase()
                 });
     
+                map.pp.S = a.performance[1].totalPerformance;
                 map.pp.X = a.performance[2].totalPerformance;
                 map.stars = Math.round(a.difficulty.starRating * 100) / 100;
                 map.stats.ar = Math.round(a.beatmapInfo.approachRate * 100) / 100;
@@ -699,7 +715,7 @@ function recommend(username, howMany = 1, mod = null) {
                 id: map.beatmap_id,
                 name: `[https://osu.ppy.sh/b/${map.beatmap_id} ${map.name}]`,
                 mapper: map.creator,
-                pp: `Future You: ${Math.floor((map.pp.X-((map.pp.X)/Math.floor(user["stats"].accuracy % 5 * 10))))}pp`,
+                pp: `Est. PP: ${Math.floor(Math.max(user["stats"].pp, map.pp.S*1.05))}pp`,
                 status: `${map.status[0].toUpperCase()}${map.status.slice(1)}`,
                 stats: `★ ${map.stars}, AR ${map.stats.ar}, BPM ${map.stats.bpm} - ${c.lib.moment(map.stats.length*1000).format("mm:ss")}`,
                 mods: mod.match(/HR|DT/i) ? `+${mod.toUpperCase()} ` : ""
