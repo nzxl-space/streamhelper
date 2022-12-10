@@ -1,5 +1,30 @@
 const c = require("../constants");
-const AWS = require("aws-sdk");
+
+const { S3 } = require("@aws-sdk/client-s3")
+const s3 = new S3({
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    },
+    endpoint: "https://s3.filebase.com", 
+    signatureVersion: "v4",
+    region: "us-east-1"
+});
+
+const S3SyncClient = require("s3-sync-client");
+const { TransferMonitor } = require("s3-sync-client");
+const { sync } = new S3SyncClient({ client: s3 });
+
+const monitor = new TransferMonitor();
+const status = setInterval(() => {
+    let p = monitor.getStatus();
+    if(p["size"].total == 0) return;
+
+    let currentInMb = Math.round((p["size"].current / 1000000) * 100) / 100;
+    let totalInMb = Math.round((p["size"].total / 1000000) * 100) / 100;
+
+    console.log(`Syncing ${currentInMb % 100}MB/${totalInMb % 100}MB ..`);
+}, 10*1000);
 
 /**
  * Simple log to JSON file
@@ -36,30 +61,20 @@ function log(user, type, data = {}) {
 }
 exports.log = log;
 
-// https://stackoverflow.com/a/46213474
-function upload(s3Path, bucketName) {
-    let s3 = new AWS.S3({ endpoint: "https://s3.filebase.com", signatureVersion: "v4" });
-
-    function walkSync(currentDirPath, callback) {
-        c.lib.fs.readdirSync(currentDirPath).forEach(function (name) {
-            var filePath = c.lib.path.join(currentDirPath, name);
-            var stat = c.lib.fs.statSync(filePath);
-            if (stat.isFile()) {
-                callback(filePath, stat);
-            } else if (stat.isDirectory()) {
-                walkSync(filePath, callback);
-            }
-        });
-    }
-
-    walkSync(s3Path, function(filePath) {
-        let bucketPath = filePath.substring(s3Path.length+1);
-        let params = { Bucket: bucketName, Key: bucketPath, Body: c.lib.fs.readFileSync(filePath) };
-        s3.putObject(params, function(err) {
-            if (err) {
-                console.log(err)
-            }
-        });
+function upload(path, bucket) {
+    return new Promise(async (resolve) => {
+        await sync(path, `s3://${bucket}`, { maxConcurrentTransfers: 2, monitor });
+        console.log(`Bucket ${bucket} is now synced!`);
+        resolve();
     });
 }
 exports.upload = upload;
+
+function download(path, bucket) {
+    return new Promise(async (resolve) => {
+        await sync(`s3://${bucket}`, path, { maxConcurrentTransfers: 2, monitor, del: true });
+        console.log(`Bucket ${bucket} is now synced!`);
+        resolve();
+    });
+}
+exports.download = download;

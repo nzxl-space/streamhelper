@@ -161,5 +161,6 @@ exports.funcs = {
     },
     log: require("./modules/bucket").log,
     upload: require("./modules/bucket").upload,
+    download: require("./modules/bucket").download,
     shuffle: require("./modules/bancho").shuffle
 }

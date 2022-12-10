@@ -6,8 +6,8 @@ require("log-prefix")(() => { return `[nzxl.space | ${require("moment")(Date.now
 const c = require("./constants");
 
 (async () => {
-    setInterval(() => {
-        c.funcs.upload(c.storage.log, process.env.S3);
+    setInterval(async () => {
+        await c.funcs.upload(c.storage.log, process.env.S3);
     }, 12*60*60*1000) // sync files every 12 hours
 
     await c.funcs.mongo.connect().then(console.log);

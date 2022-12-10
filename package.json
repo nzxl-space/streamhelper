@@ -25,6 +25,7 @@
     "node-fetch-retry": "^2.0.1",
     "nodesu": "github:nzxl101/nodesu#streamhelper",
     "path": "^0.12.7",
+    "s3-sync-client": "^3.0.3",
     "socket.io": "^4.5.0",
     "socket.io-client": "^4.5.2",
     "tmi.js": "github:tmijs/tmi.js"
