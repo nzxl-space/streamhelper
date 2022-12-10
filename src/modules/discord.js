@@ -36,7 +36,7 @@ function connect() {
 
         c.client.discord.on("presenceUpdate", async (_, presence) => {
             if(!c.database.userCount.includes(Number(presence.userId)) || presence.guild.id !== process.env.DISCORD_GUILD) return;
-
+            
             let user = await c.database.users.findOne({ id: Number(presence.userId) });
             if(!user || user.length <= 0) return;
 
@@ -84,13 +84,20 @@ function connect() {
             if(!user.osu_id) return;
 
             if(!c.storage.user.cache[`${user.twitch_id}`] || c.lib.moment(Date.now()).diff(c.storage.user.cache[`${user.twitch_id}`].refresh, "minutes") >= 60) {
-                c.storage.user.cache[`${user.twitch_id}`] = {
-                    id: user.id,
-                    osu: (await c.client.bancho.getUserById(user.osu_id)),
-                    osu_id: user.osu_id,
-                    twitch: await c.funcs.twitch.getUsername(user.twitch_id),
-                    twitch_id: user.twitch_id,
-                    refresh: Date.now()
+                try {
+                    let twitchName = await c.funcs.twitch.getUsername(user.twitch_id);
+                    if(twitchName == null) throw new Error("Twitch Username not found");
+
+                    c.storage.user.cache[`${user.twitch_id}`] = {
+                        id: user.id,
+                        osu: (await c.client.bancho.getUserById(user.osu_id)).catch(err => { throw new Error("Bancho Username not found, probably restricted"); }),
+                        osu_id: user.osu_id,
+                        twitch: await c.funcs.twitch.getUsername(user.twitch_id),
+                        twitch_id: user.twitch_id,
+                        refresh: Date.now()
+                    }
+                } catch (err) {
+                    console.log(`Failed to build cache for ${user.identifier}!`);
                 }
             }
 
