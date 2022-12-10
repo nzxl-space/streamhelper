@@ -92,7 +92,7 @@ function connect() {
                         id: user.id,
                         osu: (await c.client.bancho.getUserById(user.osu_id)).catch(err => { throw new Error("Bancho Username not found, probably restricted"); }),
                         osu_id: user.osu_id,
-                        twitch: await c.funcs.twitch.getUsername(user.twitch_id),
+                        twitch: twitchName,
                         twitch_id: user.twitch_id,
                         refresh: Date.now()
                     }
