@@ -84,20 +84,18 @@ function connect() {
             if(!user.osu_id) return;
 
             if(!c.storage.user.cache[`${user.twitch_id}`] || c.lib.moment(Date.now()).diff(c.storage.user.cache[`${user.twitch_id}`].refresh, "minutes") >= 60) {
-                try {
-                    let twitchName = await c.funcs.twitch.getUsername(user.twitch_id);
-                    if(twitchName == null) throw new Error("Twitch Username not found");
+                let twitchName = await c.funcs.twitch.getUsername(user.twitch_id);
+                if(twitchName == null) return console.log(`Twitch username for ${user.identifier} not found..`);
 
-                    c.storage.user.cache[`${user.twitch_id}`] = {
-                        id: user.id,
-                        osu: (await c.client.bancho.getUserById(user.osu_id)).catch(err => { throw new Error("Bancho Username not found, probably restricted"); }),
-                        osu_id: user.osu_id,
-                        twitch: twitchName,
-                        twitch_id: user.twitch_id,
-                        refresh: Date.now()
-                    }
-                } catch (err) {
-                    console.log(`Failed to build cache for ${user.identifier}!`);
+                let osuName = await c.client.bancho.getUserById(user.osu_id).catch(() => console.log(`Bancho username for ${user.identifier} not found.. probably restricted!`));
+
+                c.storage.user.cache[`${user.twitch_id}`] = {
+                    id: user.id,
+                    osu: osuName,
+                    osu_id: user.osu_id,
+                    twitch: twitchName,
+                    twitch_id: user.twitch_id,
+                    refresh: Date.now()
                 }
             }
 
