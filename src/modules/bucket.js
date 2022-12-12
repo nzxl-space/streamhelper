@@ -15,14 +15,17 @@ const S3SyncClient = require("s3-sync-client");
 const { TransferMonitor } = require("s3-sync-client");
 const { sync } = new S3SyncClient({ client: s3 });
 
-let syncing = false;
-const monitor = new TransferMonitor();
-const status = setInterval(() => {
+var monitor = new TransferMonitor();
+setInterval(() => {
     let p = monitor.getStatus();
-    if(p["size"].total == 0 || !syncing) return;
+    if(p["size"].total == 0) return;
 
     let currentInMb = Math.round((p["size"].current / 1000000) * 100) / 100;
     let totalInMb = Math.round((p["size"].total / 1000000) * 100) / 100;
+
+    if(currentInMb == totalInMb) {
+        return monitor = new TransferMonitor();
+    }
 
     console.log(`Syncing ${currentInMb % 100}MB/${totalInMb % 100}MB ..`);
 }, 30*1000);
@@ -64,28 +67,16 @@ exports.log = log;
 
 function upload(path, bucket) {
     return new Promise(async (resolve) => {
-        syncing = true;
-
         await sync(path, `s3://${bucket}`, { maxConcurrentTransfers: 2, monitor });
-        console.log(`Bucket ${bucket} is now synced!`);
-
-        syncing = false;
-
-        resolve();
+        resolve(`Finished syncing bucket ${bucket} successfully!`);
     });
 }
 exports.upload = upload;
 
 function download(path, bucket) {
     return new Promise(async (resolve) => {
-        syncing = true;
-
         await sync(`s3://${bucket}`, path, { maxConcurrentTransfers: 2, monitor, del: true });
-        console.log(`Bucket ${bucket} is now synced!`);
-
-        syncing = false;
-
-        resolve();
+        resolve(`Finished syncing bucket ${bucket} successfully!`);
     });
 }
 exports.download = download;

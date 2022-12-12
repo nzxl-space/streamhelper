@@ -84,7 +84,7 @@ exports.storage = {
         presence: /^(.*?)\(rank\s#(?:\d+)(?:,\d{1,3}|,\d{1,3},\d{1,3})?\)/,
         set_id: /(?<=beatmapsets\/|\/s\/)\d+/,
         beatmap_id: /(?<=beatmaps\/|b\/|#\/|#osu\/|#taiko\/|#fruits\/|#mania\/)\d+/,
-        beatmap_mods: /(?<=\+)(?:NF|EZ|HD|HR|(SD|PF)|(NC|DT)|RX|HT|FL|SO)+/ig,
+        beatmap_mods: /(?:NF|EZ|HD|HR|SD|PF|NC|DT|RX|HT|FL|SO)+$/ig,
         accuracy: /100[%]|[123456789][0-9][%]|[0-9][%]/g
     },
     statusEnum: {
